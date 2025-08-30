@@ -155,57 +155,57 @@ class MainWindow(QMainWindow):
         style = """
         QMainWindow {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(15, 76, 129, 0.7), stop: 0.5 rgba(26, 45, 107, 0.8), stop: 1 rgba(46, 52, 64, 0.9));
+                stop: 0 rgba(17, 24, 102, 0.9), stop: 0.5 rgba(73, 65, 206, 0.8), stop: 1 rgba(21, 21, 21, 0.95));
             border-radius: 25px;
         }
         
         QWidget#mainContainer {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(255, 255, 255, 0.1), stop: 1 rgba(255, 255, 255, 0.05));
+                stop: 0 rgba(175, 177, 240, 0.08), stop: 1 rgba(93, 31, 176, 0.05));
             border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(175, 177, 240, 0.25);
             backdrop-filter: blur(10px);
         }
         
         QFrame#titleBar {
-            background: rgba(46, 52, 64, 0.8);
+            background: rgba(21, 21, 21, 0.8);
             border-radius: 25px 25px 0px 0px;
-            border-bottom: 1px solid rgba(129, 161, 193, 0.2);
+            border-bottom: 1px solid rgba(175, 177, 240, 0.2);
         }
         
         QLabel#titleLabel {
-            color: #ECEFF4;
+            color: rgba(175, 177, 240, 0.95);
             font-weight: bold;
         }
         
         QLabel#statusIndicator {
-            color: #D8DEE9;
+            color: rgba(175, 177, 240, 0.8);
             font-size: 11px;
             font-weight: bold;
         }
         
         QPushButton#windowControlBtn {
-            background: rgba(76, 86, 106, 0.5);
-            border: 1px solid rgba(129, 161, 193, 0.3);
+            background: rgba(73, 65, 206, 0.3);
+            border: 1px solid rgba(175, 177, 240, 0.3);
             border-radius: 4px;
-            color: #D8DEE9;
+            color: rgba(175, 177, 240, 0.9);
             font-size: 12px;
         }
         
         QPushButton#windowControlBtn:hover {
-            background: rgba(136, 192, 208, 0.3);
+            background: rgba(73, 65, 206, 0.5);
         }
         
         QPushButton#closeBtn {
-            background: rgba(191, 97, 106, 0.5);
-            border: 1px solid rgba(191, 97, 106, 0.7);
+            background: rgba(93, 31, 176, 0.5);
+            border: 1px solid rgba(93, 31, 176, 0.7);
             border-radius: 4px;
-            color: #ECEFF4;
+            color: rgba(175, 177, 240, 0.95);
             font-size: 12px;
         }
         
         QPushButton#closeBtn:hover {
-            background: rgba(191, 97, 106, 0.8);
+            background: rgba(93, 31, 176, 0.8);
         }
         """
         self.setStyleSheet(style)

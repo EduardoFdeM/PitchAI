@@ -32,23 +32,12 @@ class StartWidget(QWidget):
         card_layout.setSpacing(40)
         card_layout.setContentsMargins(40, 60, 40, 60)
         
-        # Título principal
-        title_label = QLabel("PitchAI")
-        title_font = QFont()
-        title_font.setPointSize(32)
-        title_font.setWeight(QFont.Weight.Bold)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("color: rgba(255, 255, 255, 0.95);")
-        
-        # Subtítulo
-        subtitle_label = QLabel("Inicializando NPU...")
-        subtitle_font = QFont()
-        subtitle_font.setPointSize(14)
-        subtitle_font.setWeight(QFont.Weight.Light)
-        subtitle_label.setFont(subtitle_font)
-        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
+        # Logo/ícone placeholder (pode adicionar uma imagem depois)
+        logo_label = QLabel("🚀")
+        logo_font = QFont()
+        logo_font.setPointSize(48)
+        logo_label.setFont(logo_font)
+        logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # Barra de progresso
         self.progress_bar = QProgressBar()
@@ -63,10 +52,9 @@ class StartWidget(QWidget):
         status_font.setPointSize(11)
         self.status_label.setFont(status_font)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("color: rgba(255, 255, 255, 0.6);")
+        self.status_label.setStyleSheet("color: rgba(175, 177, 240, 0.8);")
         
-        card_layout.addWidget(title_label)
-        card_layout.addWidget(subtitle_label)
+        card_layout.addWidget(logo_label)
         card_layout.addWidget(self.progress_bar, alignment=Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(self.status_label)
         
@@ -76,25 +64,25 @@ class StartWidget(QWidget):
         self._start_loading_sequence()
 
     def _apply_styles(self):
-        """Aplicar estilos glassmorphism ao card e progress bar."""
+        """Aplicar estilos glassmorphism com nova paleta de cores."""
         style = """
         QWidget#startCard {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(255, 255, 255, 0.15), stop: 1 rgba(255, 255, 255, 0.08));
+                stop: 0 rgba(175, 177, 240, 0.15), stop: 1 rgba(73, 65, 206, 0.12));
             border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(175, 177, 240, 0.3);
         }
         
         QProgressBar {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(21, 21, 21, 0.4);
+            border: 1px solid rgba(175, 177, 240, 0.2);
             border-radius: 4px;
             text-align: center;
         }
         
         QProgressBar::chunk {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                stop: 0 rgba(78, 205, 196, 0.8), stop: 1 rgba(85, 98, 112, 0.8));
+                stop: 0 rgba(175, 177, 240, 0.9), stop: 1 rgba(93, 31, 176, 0.9));
             border-radius: 3px;
         }
         """
