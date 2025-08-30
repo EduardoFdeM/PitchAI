@@ -33,6 +33,7 @@ optimum>=1.16.0            # Otimizações ONNX
 # ============ DATA & STORAGE ============
 # sqlite3 é built-in no Python
 sqlalchemy>=2.0.0          # ORM opcional para SQLite
+aiosqlite>=0.19.0          # SQLite assíncrono
 pydantic>=2.5.0            # Validação de dados
 
 # ============ WINDOWS INTEGRATION ============

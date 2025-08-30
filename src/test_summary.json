@@ -1,0 +1,48 @@
+{
+  "call_id": "export_test_123",
+  "key_points": [
+    "Cliente demonstrou interesse na solução",
+    "Preço foi discutido e objeção tratada",
+    "Demo agendada para próxima semana",
+    "ROI explicado com cases de sucesso"
+  ],
+  "objections": [
+    {
+      "type": "preço",
+      "handled": true,
+      "note": "ROI de 18 meses apresentado"
+    },
+    {
+      "type": "timing",
+      "handled": false,
+      "note": "Aguardando aprovação"
+    }
+  ],
+  "next_steps": [
+    {
+      "desc": "Enviar proposta técnica detalhada",
+      "due": "2025-01-15",
+      "owner": "vendedor"
+    },
+    {
+      "desc": "Agendar demonstração técnica",
+      "due": "2025-01-20",
+      "owner": "vendedor"
+    },
+    {
+      "desc": "Follow-up com decisor",
+      "due": "2025-01-25",
+      "owner": "vendedor"
+    }
+  ],
+  "metrics": {
+    "talk_time_vendor_pct": 48.5,
+    "talk_time_client_pct": 51.5,
+    "sentiment_avg": 0.72,
+    "objections_total": 2,
+    "objections_resolved": 1,
+    "buying_signals": 4
+  },
+  "generated_at": "2025-01-01T10:30:00",
+  "duration_sec": 2400
+}
