@@ -1,0 +1,42 @@
+{
+  "whisper_base": {
+    "path": "models/whisper_base.onnx",
+    "ep": ["QNN", "CPU"],
+    "input": "audio_16k_mono",
+    "quant": "int8_fp16",
+    "description": "Whisper Base para transcrição em tempo real",
+    "version": "1.0.0",
+    "size_mb": 39,
+    "latency_target_ms": 500
+  },
+  "distilbert_sentiment": {
+    "path": "models/distilbert_sentiment.onnx",
+    "ep": ["QNN", "CPU"],
+    "input": "text_tokens",
+    "quant": "int8_fp16",
+    "description": "DistilBERT para análise de sentimento",
+    "version": "1.0.0",
+    "size_mb": 65,
+    "latency_target_ms": 30
+  },
+  "bert_objection": {
+    "path": "models/bert_objection.onnx",
+    "ep": ["QNN", "CPU"],
+    "input": "text_tokens",
+    "quant": "int8_fp16",
+    "description": "BERT para detecção de objeções",
+    "version": "1.0.0",
+    "size_mb": 110,
+    "latency_target_ms": 40
+  },
+  "ecapa_speaker": {
+    "path": "models/ecapa_speaker.onnx",
+    "ep": ["QNN", "CPU"],
+    "input": "audio_16k_mono",
+    "quant": "int8_fp16",
+    "description": "ECAPA-TDNN para separação de falantes",
+    "version": "1.0.0",
+    "size_mb": 85,
+    "latency_target_ms": 25
+  }
+} 

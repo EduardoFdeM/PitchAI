@@ -1,97 +1,99 @@
 """
-Configurações Globais do PitchAI
-===============================
+PitchAI - Configuração da Aplicação
+================================
 
-Gerencia todas as configurações da aplicação,
-incluindo paths, parâmetros de IA e interface.
+Configurações centralizadas para todos os módulos da aplicação.
 """
 
 import os
 from pathlib import Path
-from typing import Dict, Any
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
-class AudioConfig:
-    """Configurações de áudio."""
-    sample_rate: int = 16000
-    chunk_size: int = 1024
-    channels: int = 1
-    format: str = "int16"
-    device_index: int = None  # Auto-detect
-
-
-@dataclass
-class AIConfig:
-    """Configurações de IA e NPU."""
-    use_npu: bool = True
-    model_precision: str = "fp16"  # fp16, fp32
-    max_concurrent_models: int = 5
-    whisper_model: str = "whisper-base"
-    sentiment_model: str = "distilbert-sentiment"
-    
-    # Paths dos modelos
-    models_dir: Path = Path("models")
-    cache_dir: Path = Path("cache")
-
-
-@dataclass
-class UIConfig:
-    """Configurações de interface."""
-    theme: str = "glassmorphism"
-    window_width: int = 1200
-    window_height: int = 800
-    always_on_top: bool = False
-    minimize_to_tray: bool = True
-
-
-@dataclass
-class DatabaseConfig:
-    """Configurações do banco de dados."""
-    db_path: Path = Path("data/pitchai.db")
-    backup_enabled: bool = True
-    backup_interval: int = 3600  # segundos
-
-
 class Config:
-    """Configuração principal do PitchAI."""
+    """Configuração principal da aplicação."""
     
-    def __init__(self):
-        self.app_dir = Path(__file__).parent.parent.parent
-        self.audio = AudioConfig()
-        self.ai = AIConfig()
-        self.ui = UIConfig()
-        self.database = DatabaseConfig()
+    # ===== DIRETÓRIOS =====
+    app_dir: Path
+    data_dir: Path
+    models_dir: Path
+    logs_dir: Path
+    cache_dir: Path
+    
+    # ===== AUDIO =====
+    sample_rate: int = 16000
+    chunk_duration_ms: int = 1000
+    channels: int = 1
+    device_name: Optional[str] = None  # None = dispositivo padrão
+    
+    # ===== NPU & AI =====
+    onnx_providers: list = None  # ['QNNExecutionProvider', 'CPUExecutionProvider']
+    model_cache_dir: Optional[Path] = None
+    
+    # ===== ANYTHINGLLM =====
+    anythingllm_url: str = "http://127.0.0.1:3001"
+    anythingllm_api_key: str = "local-dev"
+    anythingllm_timeout: float = 2.0
+    anythingllm_model: str = "llama3:instruct"
+    
+    # ===== SENTIMENT =====
+    sentiment_update_interval_ms: int = 500
+    sentiment_threshold: float = 0.6
+    
+    # ===== UI =====
+    window_width: int = 480
+    window_height: int = 853  # 9:16 ratio
+    theme: str = "glassmorphism"
+    
+    def __post_init__(self):
+        """Configurações pós-inicialização."""
+        if self.onnx_providers is None:
+            self.onnx_providers = ['QNNExecutionProvider', 'CPUExecutionProvider']
         
-        # Criar diretórios necessários
-        self._create_directories()
+        if self.model_cache_dir is None:
+            self.model_cache_dir = self.cache_dir / "models"
         
-    def _create_directories(self):
-        """Criar diretórios necessários."""
-        directories = [
-            self.app_dir / "data",
-            self.app_dir / "models", 
-            self.app_dir / "cache",
-            self.app_dir / "logs"
-        ]
+        # Criar diretórios se não existirem
+        for directory in [self.data_dir, self.models_dir, self.logs_dir, 
+                         self.cache_dir, self.model_cache_dir]:
+            directory.mkdir(parents=True, exist_ok=True)
+
+
+def create_config(app_dir: Optional[Path] = None) -> Config:
+    """Criar configuração padrão da aplicação."""
+    if app_dir is None:
+        # Usar diretório atual se não especificado
+        app_dir = Path.cwd()
+    
+    return Config(
+        app_dir=app_dir,
+        data_dir=app_dir / "data",
+        models_dir=app_dir / "models",
+        logs_dir=app_dir / "logs",
+        cache_dir=app_dir / "cache",
         
-        for directory in directories:
-            directory.mkdir(exist_ok=True)
-    
-    def get_model_path(self, model_name: str) -> Path:
-        """Obter caminho para um modelo específico."""
-        return self.app_dir / "models" / f"{model_name}.onnx"
-    
-    def get_database_path(self) -> Path:
-        """Obter caminho completo do banco de dados."""
-        return self.app_dir / self.database.db_path
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Converter configuração para dicionário."""
-        return {
-            "audio": self.audio.__dict__,
-            "ai": self.ai.__dict__, 
-            "ui": self.ui.__dict__,
-            "database": self.database.__dict__
-        }
+        # Configurações de áudio
+        sample_rate=16000,
+        chunk_duration_ms=1000,
+        channels=1,
+        
+        # Configurações NPU
+        onnx_providers=['QNNExecutionProvider', 'CPUExecutionProvider'],
+        
+        # Configurações AnythingLLM
+        anythingllm_url=os.getenv('ANYTHINGLLM_URL', 'http://127.0.0.1:3001'),
+        anythingllm_api_key=os.getenv('ANYTHINGLLM_API_KEY', 'local-dev'),
+        anythingllm_timeout=float(os.getenv('ANYTHINGLLM_TIMEOUT', '2.0')),
+        anythingllm_model=os.getenv('ANYTHINGLLM_MODEL', 'llama3:instruct'),
+        
+        # Configurações de sentimento
+        sentiment_update_interval_ms=500,
+        sentiment_threshold=0.6,
+        
+        # Configurações UI
+        window_width=480,
+        window_height=853,
+        theme="glassmorphism"
+    )
