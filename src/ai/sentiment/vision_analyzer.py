@@ -2,200 +2,185 @@
 Vision Analyzer - RF-3.3: Motor de visão (opcional)
 =================================================
 
-Análise de expressões faciais para complementar sentimento e engajamento.
+Análise de expressões faciais para complementar sentimento e engajamento usando AnythingLLM.
 """
 
 import logging
 import numpy as np
 from typing import List, Dict, Any, Optional
-
-try:
-    import onnxruntime as ort
-    ONNX_AVAILABLE = True
-except ImportError:
-    ONNX_AVAILABLE = False
-    print("⚠️ ONNX Runtime não disponível. Usando simulação.")
+import base64
+import io
+from PIL import Image
+import time
 
 from .models import Face, Expression, SentimentConfig
+from ...core.event_bus import publish_event
+from ...core.contracts import EventType, create_error
 
 
 class VisionAnalyzer:
-    """RF-3.3: Motor de visão (opcional)"""
+    """RF-3.3: Motor de visão (opcional) usando AnythingLLM"""
     
-    def __init__(self, config: SentimentConfig = None, model_manager=None, opt_in: bool = False):
+    def __init__(self, config: SentimentConfig = None, anythingllm_client=None, opt_in: bool = False):
         self.config = config or SentimentConfig()
-        self.model_manager = model_manager
+        self.anythingllm_client = anythingllm_client
         self.logger = logging.getLogger(__name__)
         
         # Configuração de privacidade
         self.enabled = opt_in and self.config.enable_vision
-        
-        # Modelo ONNX para detecção facial
-        self.face_detector = None
-        self.expression_classifier = None
         
         # Configurações de processamento
         self.frame_width = 640
         self.frame_height = 480
         self.face_confidence_threshold = 0.7
         
-        # Inicializar se habilitado
+        # Verificar disponibilidade do AnythingLLM se habilitado
         if self.enabled:
-            self._initialize_models()
+            self._check_anythingllm()
     
-    def _initialize_models(self):
-        """Inicializar modelos de visão."""
-        try:
-            if not ONNX_AVAILABLE:
-                self.logger.warning("ONNX não disponível, usando simulação")
-                return
-            
-            # Tentar carregar via ModelManager
-            if self.model_manager:
-                self.expression_classifier = self.model_manager.get_session("face_expression")
-                if self.expression_classifier:
-                    self.logger.info("✅ Modelo de expressão facial carregado via ModelManager")
-                    return
-            
-            # Fallback para carregamento manual
-            model_path = "models/face_expression.onnx"
-            providers = ["QNNExecutionProvider", "CPUExecutionProvider"]
-            
+    def _check_anythingllm(self):
+        """Verificar se o AnythingLLM está disponível."""
+        if self.anythingllm_client:
             try:
-                self.expression_classifier = ort.InferenceSession(model_path, providers=providers)
-                self.logger.info(f"✅ Modelo de expressão facial carregado: {model_path}")
+                # Testar conexão
+                self.anythingllm_client._test_connection()
+                self.logger.info("✅ AnythingLLM disponível para análise visual")
             except Exception as e:
-                self.logger.warning(f"⚠️ Erro ao carregar modelo: {e}")
-                
-        except Exception as e:
-            self.logger.error(f"❌ Erro na inicialização dos modelos: {e}")
-    
-    def is_enabled(self) -> bool:
-        """Verificar se a análise visual está habilitada."""
-        return self.enabled
-    
-    def enable_analysis(self, opt_in: bool = True):
-        """Habilitar análise visual (opt-in)."""
-        if opt_in:
-            self.enabled = True
-            self.config.enable_vision = True
-            self._initialize_models()
-            self.logger.info("✅ Análise visual habilitada (opt-in)")
+                self.logger.warning(f"⚠️ AnythingLLM não disponível: {e}")
         else:
-            self.enabled = False
-            self.config.enable_vision = False
-            self.logger.info("❌ Análise visual desabilitada")
-    
-    def detect_faces(self, frame: np.ndarray) -> List[Face]:
-        """Detectar faces na imagem."""
-        if not self.enabled:
-            return []
-        
-        try:
-            if self.face_detector:
-                # Usar modelo ONNX real
-                return self._detect_faces_with_model(frame)
-            else:
-                # Simulação para desenvolvimento
-                return self._simulate_face_detection(frame)
-                
-        except Exception as e:
-            self.logger.error(f"Erro na detecção de faces: {e}")
-            return []
-    
-    def _detect_faces_with_model(self, frame: np.ndarray) -> List[Face]:
-        """Detecção usando modelo ONNX."""
-        try:
-            # TODO: Implementar detecção real
-            # Por enquanto, usar simulação
-            return self._simulate_face_detection(frame)
-            
-        except Exception as e:
-            self.logger.error(f"Erro no modelo de detecção: {e}")
-            return self._simulate_face_detection(frame)
-    
-    def _simulate_face_detection(self, frame: np.ndarray) -> List[Face]:
-        """Simular detecção de faces."""
-        faces = []
-        
-        # Simular 0-2 faces baseado no tamanho da imagem
-        height, width = frame.shape[:2]
-        
-        # Probabilidade de detectar face baseada no tamanho
-        face_probability = min(width * height / (640 * 480), 0.8)
-        
-        if np.random.random() < face_probability:
-            # Simular uma face
-            face = Face(
-                bbox=[width//4, height//4, width//2, height//2],  # centro da imagem
-                landmarks=[[width//2, height//3], [width//2, height//2]],  # pontos básicos
-                confidence=0.85
-            )
-            faces.append(face)
-        
-        return faces
+            self.logger.warning("⚠️ Cliente AnythingLLM não fornecido")
     
     def classify_expressions(self, faces: List[Face]) -> List[Expression]:
-        """Classificar expressões faciais."""
+        """Classificar expressões faciais usando AnythingLLM."""
         if not self.enabled or not faces:
             return []
         
         try:
-            expressions = []
-            
-            for i, face in enumerate(faces):
-                if self.expression_classifier:
-                    # Usar modelo ONNX real
-                    expression = self._classify_with_model(face, i)
-                else:
-                    # Simulação
-                    expression = self._simulate_expression_classification(face, i)
+            if self.anythingllm_client:
+                return self._classify_with_anythingllm(faces)
+            else:
+                return self._simulate_expressions(faces)
                 
-                if expression:
-                    expressions.append(expression)
-            
-            return expressions
-            
         except Exception as e:
             self.logger.error(f"Erro na classificação de expressões: {e}")
             return []
     
-    def _classify_with_model(self, face: Face, face_id: int) -> Optional[Expression]:
-        """Classificação usando modelo ONNX."""
+    def _classify_with_anythingllm(self, faces: List[Face]) -> List[Expression]:
+        """Classificar expressões usando AnythingLLM."""
         try:
-            # TODO: Implementar classificação real
-            # Por enquanto, usar simulação
-            return self._simulate_expression_classification(face, face_id)
+            expressions = []
+            
+            for i, face in enumerate(faces):
+                # Preparar descrição da face
+                face_desc = f"""
+                Face #{i+1}:
+                - Confiança de detecção: {face.confidence:.2f}
+                - Posição: {face.bbox}
+                - Número de landmarks: {len(face.landmarks)}
+                """
+                
+                # Prompt para classificação
+                system_prompt = (
+                    "Você é um especialista em análise de expressões faciais. "
+                    "Analise a face descrita e determine a expressão emocional dominante. "
+                    "Responda APENAS com: expressão,confiança,intensidade "
+                    "onde expressão = joy/surprise/doubt/anger/sadness/neutral, "
+                    "confiança = 0.0-1.0, intensidade = 0.0-1.0. "
+                    "Exemplo: joy,0.85,0.7"
+                )
+                
+                user_prompt = f"{face_desc}\n\nExpressão (formato: expressão,confiança,intensidade):"
+                
+                # Configurar payload
+                payload = {
+                    "model": self.anythingllm_client.default_model,
+                    "temperature": 0.1,
+                    "stream": False,
+                    "max_tokens": 20,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                }
+                
+                # Fazer requisição
+                response = self.anythingllm_client._make_request(payload, stream=False)
+                
+                if response.status_code != 200:
+                    self.logger.warning(f"Erro na API AnythingLLM: {response.status_code}")
+                    # Publicar erro no EventBus
+                    error_event = create_error("rag", "anythingllm_api_error", 
+                                             f"Erro na API AnythingLLM: {response.status_code}")
+                    publish_event(EventType.ERROR.value, error_event.to_dict())
+                    continue
+                
+                # Processar resposta
+                data = response.json()
+                content = data['choices'][0]['message']['content'].strip()
+                
+                # Parsear resposta
+                try:
+                    parts = content.split(',')
+                    if len(parts) >= 3:
+                        expression_name = parts[0].strip()
+                        confidence = float(parts[1].strip())
+                        intensity = float(parts[2].strip())
+                        
+                        # Validar expressão
+                        valid_expressions = ['joy', 'surprise', 'doubt', 'anger', 'sadness', 'neutral']
+                        if expression_name not in valid_expressions:
+                            expression_name = 'neutral'
+                        
+                        expr = Expression(
+                            face_id=i,
+                            expression=expression_name,
+                            confidence=np.clip(confidence, 0.0, 1.0),
+                            intensity=np.clip(intensity, 0.0, 1.0)
+                        )
+                        expressions.append(expr)
+                        
+                except (ValueError, IndexError):
+                    self.logger.warning(f"Resposta inválida do AnythingLLM: {content}")
+                    continue
+            
+            return expressions
             
         except Exception as e:
-            self.logger.error(f"Erro no modelo de classificação: {e}")
-            return self._simulate_expression_classification(face, face_id)
+            self.logger.error(f"Erro na classificação com AnythingLLM: {e}")
+            # Publicar erro no EventBus
+            error_event = create_error("sentiment", "vision_analysis_error", 
+                                     f"Erro na análise visual: {e}")
+            publish_event(EventType.ERROR.value, error_event.to_dict())
+            return self._simulate_expressions(faces)
     
-    def _simulate_expression_classification(self, face: Face, face_id: int) -> Optional[Expression]:
+    def _simulate_expressions(self, faces: List[Face]) -> List[Expression]:
         """Simular classificação de expressões."""
-        # Expressões possíveis
-        possible_expressions = [
-            "neutral", "joy", "surprise", "sadness", "anger", "fear", "disgust"
-        ]
-        
-        # Simular expressão baseada na confiança da face
-        if face.confidence > 0.8:
-            # Face bem detectada - expressão mais confiável
-            expression = np.random.choice(possible_expressions, p=[0.4, 0.2, 0.1, 0.1, 0.05, 0.05, 0.1])
-            confidence = np.random.uniform(0.7, 0.95)
-        else:
-            # Face mal detectada - mais neutro
-            expression = np.random.choice(possible_expressions, p=[0.7, 0.1, 0.05, 0.05, 0.02, 0.02, 0.06])
-            confidence = np.random.uniform(0.3, 0.6)
-        
-        intensity = np.random.uniform(0.3, 0.9)
-        
-        return Expression(
-            face_id=face_id,
-            expression=expression,
-            confidence=confidence,
-            intensity=intensity
-        )
+        expressions = []
+        for i, face in enumerate(faces):
+            # Expressões possíveis
+            possible_expressions = [
+                "neutral", "joy", "surprise", "sadness", "anger", "fear", "disgust"
+            ]
+            
+            # Simular expressão baseada na confiança da face
+            if face.confidence > 0.8:
+                # Face bem detectada - expressão mais confiável
+                expression = np.random.choice(possible_expressions, p=[0.4, 0.2, 0.1, 0.1, 0.05, 0.05, 0.1])
+                confidence = np.random.uniform(0.7, 0.95)
+            else:
+                # Face mal detectada - mais neutro
+                expression = np.random.choice(possible_expressions, p=[0.7, 0.1, 0.05, 0.05, 0.02, 0.02, 0.06])
+                confidence = np.random.uniform(0.3, 0.6)
+            
+            intensity = np.random.uniform(0.3, 0.9)
+            
+            expressions.append(Expression(
+                face_id=i,
+                expression=expression,
+                confidence=confidence,
+                intensity=intensity
+            ))
+        return expressions
     
     def analyze_frame(self, frame: np.ndarray, ts_ms: int) -> Dict[str, Any]:
         """Análise completa de um frame."""
@@ -220,7 +205,7 @@ class VisionAnalyzer:
             sentiment = self._calculate_visual_sentiment(expressions)
             engagement = self._calculate_visual_engagement(expressions)
             
-            return {
+            result = {
                 "enabled": True,
                 "faces_detected": len(faces),
                 "expressions": expressions,
@@ -230,8 +215,27 @@ class VisionAnalyzer:
                 "confidence": np.mean([e.confidence for e in expressions]) if expressions else 0.0
             }
             
+            # Publicar métricas de visão no EventBus se houver faces detectadas
+            if faces:
+                vision_metrics = {
+                    "faces_detected": len(faces),
+                    "sentiment": sentiment,
+                    "engagement": engagement,
+                    "confidence": result["confidence"],
+                    "ts_ms": ts_ms
+                }
+                # Nota: Este evento seria usado para complementar o sentimento geral
+                # publish_event("vision.metrics", vision_metrics)
+            
+            return result
+            
         except Exception as e:
             self.logger.error(f"Erro na análise de frame: {e}")
+            # Publicar erro no EventBus
+            error_event = create_error("sentiment", "vision_frame_error", 
+                                     f"Erro na análise de frame: {e}")
+            publish_event(EventType.ERROR.value, error_event.to_dict())
+            
             return {
                 "enabled": True,
                 "faces_detected": 0,
@@ -319,3 +323,54 @@ class VisionAnalyzer:
         self.enabled = False
         self.config.enable_vision = False
         self.logger.info("Recursos de análise visual limpos") 
+    
+    def is_enabled(self) -> bool:
+        """Verificar se a análise visual está habilitada."""
+        return self.enabled
+    
+    def enable_analysis(self, opt_in: bool = True):
+        """Habilitar análise visual (opt-in)."""
+        if opt_in:
+            self.enabled = True
+            self.config.enable_vision = True
+            self._check_anythingllm()
+            self.logger.info("✅ Análise visual habilitada (opt-in)")
+        else:
+            self.enabled = False
+            self.config.enable_vision = False
+            self.logger.info("❌ Análise visual desabilitada")
+    
+    def detect_faces(self, frame: np.ndarray) -> List[Face]:
+        """Detectar faces na imagem."""
+        if not self.enabled:
+            return []
+        
+        try:
+            # Simulação para desenvolvimento
+            # Em produção, usar detector de faces real
+            return self._simulate_face_detection(frame)
+            
+        except Exception as e:
+            self.logger.error(f"Erro na detecção de faces: {e}")
+            return []
+    
+    def _simulate_face_detection(self, frame: np.ndarray) -> List[Face]:
+        """Simular detecção de faces."""
+        faces = []
+        
+        # Simular 0-2 faces baseado no tamanho da imagem
+        height, width = frame.shape[:2]
+        
+        # Probabilidade de detectar face baseada no tamanho
+        face_probability = min(width * height / (640 * 480), 0.8)
+        
+        if np.random.random() < face_probability:
+            # Simular uma face
+            face = Face(
+                bbox=[width//4, height//4, width//2, height//2],  # centro da imagem
+                landmarks=[[width//2, height//3], [width//2, height//2]],  # pontos básicos
+                confidence=0.85
+            )
+            faces.append(face)
+        
+        return faces 
