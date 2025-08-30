@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt, pyqtSlot, QPoint
 from PyQt6.QtGui import QFont, QMouseEvent
 
 from .start_widget import StartWidget
+from .recording_widget import RecordingWidget
 from .analysis_widget import AnalysisWidget
 from .summary_widget import SummaryWidget
  
@@ -69,9 +70,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         
-        # ===== BARRA DE TÍTULO PERSONALIZADA =====
-        self.title_bar = self._create_title_bar()
-        layout.addWidget(self.title_bar)
+        # Sem barra de título para efeito fullscreen liquid glass
         
         # ===== STACK DE TELAS =====
         self.stacked_widget = QStackedWidget()
@@ -79,14 +78,16 @@ class MainWindow(QMainWindow):
         
         # Criar e adicionar as telas
         self.start_widget = StartWidget()
+        self.recording_widget = RecordingWidget(self.config, self.app_instance)
         self.analysis_widget = AnalysisWidget(self.config, self.app_instance)
         self.summary_widget = SummaryWidget()
         
         self.stacked_widget.addWidget(self.start_widget)      # Índice 0
-        self.stacked_widget.addWidget(self.analysis_widget)   # Índice 1
-        self.stacked_widget.addWidget(self.summary_widget)    # Índice 2
+        self.stacked_widget.addWidget(self.recording_widget)  # Índice 1 (nova tela principal)
+        self.stacked_widget.addWidget(self.analysis_widget)   # Índice 2
+        self.stacked_widget.addWidget(self.summary_widget)    # Índice 3
         
-        # Iniciar na tela inicial
+        # Iniciar na tela de splash
         self.stacked_widget.setCurrentIndex(0)
     
     def _create_title_bar(self) -> QFrame:
@@ -164,7 +165,7 @@ class MainWindow(QMainWindow):
                 stop: 0 rgba(175, 177, 240, 0.08), stop: 1 rgba(93, 31, 176, 0.05));
             border-radius: 25px;
             border: 1px solid rgba(175, 177, 240, 0.25);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
         }
         
         QFrame#titleBar {
@@ -212,11 +213,14 @@ class MainWindow(QMainWindow):
     
     def _connect_signals(self):
         """Conectar sinais da aplicação com a UI."""
-        # Conectar navegação do StartWidget
-        self.start_widget.start_analysis_requested.connect(self._go_to_analysis)
+        # Conectar navegação do StartWidget para RecordingWidget
+        self.start_widget.start_analysis_requested.connect(self._go_to_recording)
         
         # Conectar navegação do SummaryWidget
         self.summary_widget.back_to_start_requested.connect(self._go_to_start)
+        
+        # Conectar navegação do RecordingWidget
+        self.recording_widget.back_to_start_requested.connect(self._go_to_start)
         
         # Os sinais do app_instance já estão conectados no AnalysisWidget
         # Não precisamos reconectá-los aqui
@@ -251,16 +255,17 @@ class MainWindow(QMainWindow):
         # Reiniciar loading do StartWidget
         self.start_widget.restart_loading()
     
-    def _go_to_summary(self):
-        """Navegar para a tela de resumo."""
+    def _go_to_recording(self):
+        """Navegar para a tela de gravação (nova tela principal)."""
+        self.stacked_widget.setCurrentIndex(1)
+        
+    def _go_to_analysis(self):
+        """Navegar para a tela de análise."""
         self.stacked_widget.setCurrentIndex(2)
         
-        # Manter indicadores de status visíveis
-        self.npu_status_label.setVisible(True)
-        self.recording_indicator.setVisible(True)
-        
-        # Atualizar status para "concluído"
-        self.update_recording_status(False)
+    def _go_to_summary(self):
+        """Navegar para a tela de resumo."""
+        self.stacked_widget.setCurrentIndex(3)
     
     @pyqtSlot()
     def update_npu_status(self, status: str):

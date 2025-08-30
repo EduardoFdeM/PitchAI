@@ -19,71 +19,102 @@ class StartWidget(QWidget):
         self._setup_ui()
         
     def _setup_ui(self):
-        """Configurar a interface do widget com splash screen."""
+        """Configurar interface liquid glass elegante."""
+        # Layout principal sem margens para efeito fullscreen
         main_layout = QVBoxLayout(self)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        # Card central
-        card = QWidget()
-        card.setObjectName("startCard")
-        card_layout = QVBoxLayout(card)
-        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        card_layout.setSpacing(40)
-        card_layout.setContentsMargins(40, 60, 40, 60)
+        # Container principal com efeito liquid glass
+        self.glass_container = QWidget()
+        self.glass_container.setObjectName("liquidGlass")
         
-        # Logo/ícone placeholder (pode adicionar uma imagem depois)
+        # Layout centralizado dentro do glass
+        glass_layout = QVBoxLayout(self.glass_container)
+        glass_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        glass_layout.setContentsMargins(0, 0, 0, 0)
+        glass_layout.setSpacing(50)
+        
+        # Logo central elegante
         logo_label = QLabel("🚀")
         logo_font = QFont()
-        logo_font.setPointSize(48)
+        logo_font.setPointSize(64)
         logo_label.setFont(logo_font)
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_label.setStyleSheet("color: rgba(175, 177, 240, 0.9); margin: 30px;")
         
-        # Barra de progresso
+        # Progress container com efeito glass
+        progress_container = QWidget()
+        progress_container.setObjectName("progressGlass")
+        progress_container.setFixedSize(320, 80)
+        
+        progress_layout = QVBoxLayout(progress_container)
+        progress_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        progress_layout.setSpacing(20)
+        progress_layout.setContentsMargins(30, 20, 30, 20)
+        
+        # Barra de progresso liquid
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setFixedSize(250, 8)
+        self.progress_bar.setFixedHeight(6)
         self.progress_bar.setTextVisible(False)
         
-        # Status label
-        self.status_label = QLabel("Carregando modelos de IA...")
+        # Status label minimalista
+        self.status_label = QLabel("Inicializando...")
         status_font = QFont()
-        status_font.setPointSize(11)
+        status_font.setPointSize(12)
+        status_font.setWeight(QFont.Weight.Light)
         self.status_label.setFont(status_font)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("color: rgba(175, 177, 240, 0.8);")
+        self.status_label.setStyleSheet("color: rgba(175, 177, 240, 0.7);")
         
-        card_layout.addWidget(logo_label)
-        card_layout.addWidget(self.progress_bar, alignment=Qt.AlignmentFlag.AlignCenter)
-        card_layout.addWidget(self.status_label)
+        progress_layout.addWidget(self.progress_bar)
+        progress_layout.addWidget(self.status_label)
         
-        main_layout.addWidget(card)
+        glass_layout.addWidget(logo_label)
+        glass_layout.addWidget(progress_container, alignment=Qt.AlignmentFlag.AlignCenter)
         
-        self._apply_styles()
+        main_layout.addWidget(self.glass_container)
+        
+        self._apply_liquid_glass_styles()
         self._start_loading_sequence()
 
-    def _apply_styles(self):
-        """Aplicar estilos glassmorphism com nova paleta de cores."""
+    def _apply_liquid_glass_styles(self):
+        """Aplicar estilos liquid glass elegantes tipo Apple."""
         style = """
-        QWidget#startCard {
+        QWidget#liquidGlass {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(175, 177, 240, 0.15), stop: 1 rgba(73, 65, 206, 0.12));
-            border-radius: 25px;
-            border: 1px solid rgba(175, 177, 240, 0.3);
+                stop: 0 rgba(175, 177, 240, 0.08), 
+                stop: 0.3 rgba(73, 65, 206, 0.12),
+                stop: 0.7 rgba(93, 31, 176, 0.08),
+                stop: 1 rgba(17, 24, 102, 0.15));
+            border: 1px solid rgba(175, 177, 240, 0.15);
+            border-radius: 0px;
+        }
+        
+        QWidget#progressGlass {
+            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
+                stop: 0 rgba(255, 255, 255, 0.12), 
+                stop: 1 rgba(255, 255, 255, 0.04));
+            border: 1px solid rgba(175, 177, 240, 0.25);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
         }
         
         QProgressBar {
-            background: rgba(21, 21, 21, 0.4);
-            border: 1px solid rgba(175, 177, 240, 0.2);
-            border-radius: 4px;
-            text-align: center;
+            background: rgba(21, 21, 21, 0.2);
+            border: 1px solid rgba(175, 177, 240, 0.15);
+            border-radius: 3px;
         }
         
         QProgressBar::chunk {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                stop: 0 rgba(175, 177, 240, 0.9), stop: 1 rgba(93, 31, 176, 0.9));
-            border-radius: 3px;
+                stop: 0 rgba(175, 177, 240, 0.8), 
+                stop: 0.5 rgba(73, 65, 206, 0.9),
+                stop: 1 rgba(93, 31, 176, 0.8));
+            border-radius: 2px;
+            border: none;
         }
         """
         self.setStyleSheet(style)
