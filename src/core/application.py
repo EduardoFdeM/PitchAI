@@ -20,6 +20,7 @@ from ui.main_window import MainWindow
 from ai.npu_manager import NPUManager
 from ai.sentiment import SentimentService, SentimentConfig
 from ai.rag_service import RAGService
+from ai.summary_service import PostCallSummaryService
 from audio.capture import AudioCapture
 from data.database import DatabaseManager
 
@@ -43,6 +44,7 @@ class PitchAIApp(QObject):
         self.npu_manager: Optional[NPUManager] = None
         self.sentiment_service: Optional[SentimentService] = None
         self.rag_service: Optional[RAGService] = None
+        self.summary_service: Optional[PostCallSummaryService] = None
         self.audio_capture: Optional[AudioCapture] = None
         self.database: Optional[DatabaseManager] = None
         
@@ -82,13 +84,16 @@ class PitchAIApp(QObject):
             # 4. Inicializar serviço RAG
             self._initialize_rag()
             
-            # 5. Inicializar captura de áudio
+            # 5. Inicializar serviço de resumo
+            self._initialize_summary()
+            
+            # 6. Inicializar captura de áudio
             self._initialize_audio()
             
-            # 6. Inicializar interface
+            # 7. Inicializar interface
             self._initialize_ui()
             
-            # 7. Conectar sinais
+            # 8. Conectar sinais
             self._connect_signals()
             
             self.logger.info("✅ PitchAI inicializado com sucesso!")
@@ -99,8 +104,8 @@ class PitchAIApp(QObject):
     
     def _initialize_database(self):
         """Inicializar gerenciador de banco de dados."""
-        self.database = DatabaseManager(self.config)
-        self.database.initialize()
+        db_path = self.config.data_dir / "pitchai.db"
+        self.database = DatabaseManager(db_path)
         self.logger.info("✅ Banco de dados inicializado")
     
     def _initialize_npu(self):
@@ -112,7 +117,9 @@ class PitchAIApp(QObject):
     def _initialize_sentiment(self):
         """Inicializar serviço de sentimento."""
         sentiment_config = SentimentConfig()
-        self.sentiment_service = SentimentService(sentiment_config, self.npu_manager)
+        # Passar cliente AnythingLLM se disponível
+        anythingllm_client = getattr(self.rag_service, 'anythingllm_client', None) if self.rag_service else None
+        self.sentiment_service = SentimentService(sentiment_config, self.npu_manager, anythingllm_client)
         self.sentiment_service.initialize()
         self.logger.info("✅ Serviço de sentimento inicializado")
     
@@ -120,6 +127,12 @@ class PitchAIApp(QObject):
         """Inicializar serviço RAG."""
         self.rag_service = RAGService(self.config)
         self.logger.info("✅ Serviço RAG inicializado")
+    
+    def _initialize_summary(self):
+        """Inicializar serviço de resumo."""
+        anythingllm_client = getattr(self.rag_service, 'anythingllm_client', None) if self.rag_service else None
+        self.summary_service = PostCallSummaryService(self.config, anythingllm_client)
+        self.logger.info("✅ Serviço de resumo inicializado")
     
     def _initialize_audio(self):
         """Inicializar captura de áudio."""

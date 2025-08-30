@@ -304,14 +304,66 @@ class ProsodyAnalyzer:
             return 0.0
     
     def _classify_with_model(self, features: ProsodyFeatures) -> float:
-        """Classificação usando modelo ONNX."""
+        """Classificação usando AnythingLLM."""
         try:
-            # TODO: Implementar inferência real
-            # Por enquanto, usar simulação
-            return self._simulate_valence(features)
+            if not hasattr(self, 'anythingllm_client') or not self.anythingllm_client:
+                return self._simulate_valence(features)
             
+            # Preparar descrição das features
+            features_desc = f"""
+            Features de prosódia:
+            - F0 médio: {features.f0_mean:.2f} Hz
+            - F0 std: {features.f0_std:.2f} Hz
+            - Energia média: {features.energy_mean:.2f}
+            - Energia std: {features.energy_std:.2f}
+            - Taxa de fala: {features.speaking_rate:.2f} sílabas/s
+            - Proporção de pausas: {features.pause_ratio:.2f}
+            - Jitter: {features.jitter:.2f}
+            - Shimmer: {features.shimmer:.2f}
+            """
+            
+            # Prompt para análise de prosódia
+            system_prompt = (
+                "Você é um especialista em análise de prosódia. "
+                "Analise as features vocais e retorne APENAS um número entre -1 e +1, "
+                "onde -1 = sentimento negativo na voz, 0 = neutro, +1 = positivo. "
+                "Considere: F0 alto = excitação, energia alta = engajamento, etc. "
+                "Exemplo: 0.6"
+            )
+            
+            user_prompt = f"{features_desc}\n\nSentimento da voz (-1 a +1):"
+            
+            # Configurar payload
+            payload = {
+                "model": self.anythingllm_client.default_model,
+                "temperature": 0.1,
+                "stream": False,
+                "max_tokens": 10,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            }
+            
+            # Fazer requisição
+            response = self.anythingllm_client._make_request(payload, stream=False)
+            
+            if response.status_code != 200:
+                return self._simulate_valence(features)
+            
+            # Processar resposta
+            data = response.json()
+            content = data['choices'][0]['message']['content'].strip()
+            
+            # Parsear número
+            try:
+                score = float(content)
+                return np.clip(score, -1.0, 1.0)
+            except ValueError:
+                return self._simulate_valence(features)
+                
         except Exception as e:
-            self.logger.error(f"Erro no modelo ONNX: {e}")
+            self.logger.error(f"Erro na análise de prosódia com AnythingLLM: {e}")
             return self._simulate_valence(features)
     
     def _simulate_valence(self, features: ProsodyFeatures) -> float:
