@@ -1,0 +1,70 @@
+# ========================================
+# AxonAI - Requirements
+# Copiloto de Vendas NPU-Powered
+# ========================================
+
+# ============ CORE FRAMEWORK ============
+PyQt6>=6.6.0              # Interface nativa moderna
+numpy>=1.24.0,<1.27.0     # Operações matemáticas otimizadas
+
+# ============ NPU & AI INFERENCE ============
+# CRITICAL: ONNX Runtime with QNN Provider para Snapdragon X NPU
+# Para instalar corretamente:
+# pip install onnxruntime-qnn --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-qnn/pypi/simple/
+onnxruntime>=1.16.0        # Fallback - será substituído pelo QNN
+torch>=2.1.0,<2.3.0       # Para modelos PyTorch → ONNX
+torchvision>=0.16.0
+onnx>=1.15.0               # Formato de modelo padrão
+
+# ============ AUDIO PROCESSING ============
+pyaudio>=0.2.11            # Captura de áudio do sistema (WASAPI)
+soundfile>=0.12.1          # I/O de arquivos de áudio
+librosa>=0.10.1            # Processamento avançado de áudio
+webrtcvad>=2.0.10          # Voice Activity Detection
+scipy>=1.11.0              # Processamento de sinais
+
+# ============ AI & ML MODELS ============
+transformers>=4.35.0       # Modelos Hugging Face
+tokenizers>=0.15.0         # Tokenização rápida
+sentence-transformers>=2.2.2  # Embeddings semânticos
+faiss-cpu>=1.7.4           # Busca vetorial para RAG
+optimum>=1.16.0            # Otimizações ONNX
+
+# ============ DATA & STORAGE ============
+# sqlite3 é built-in no Python
+sqlalchemy>=2.0.0          # ORM opcional para SQLite
+pydantic>=2.5.0            # Validação de dados
+
+# ============ WINDOWS INTEGRATION ============
+pywin32>=306; sys_platform == "win32"     # APIs do Windows
+comtypes>=1.2.0; sys_platform == "win32"  # COM interfaces
+pythonnet>=3.0.0; sys_platform == "win32" # .NET interop (opcional)
+
+# ============ UTILITIES ============
+python-dotenv>=1.0.0       # Variáveis de ambiente
+click>=8.1.7               # CLI interface
+tqdm>=4.66.0               # Barras de progresso
+requests>=2.31.0           # HTTP requests
+pillow>=10.0.0             # Processamento de imagens (para glassmorphism)
+psutil>=5.9.0              # Monitoramento de sistema
+
+# ============ PERFORMANCE OPTIMIZATION ============
+numba>=0.58.0              # JIT compilation para NumPy
+threadpoolctl>=3.2.0       # Controle de threads
+
+# ============ DEVELOPMENT TOOLS ============
+pytest>=7.4.0             # Testes
+pytest-qt>=4.2.0          # Testes para PyQt
+black>=23.11.0            # Formatação de código
+flake8>=6.1.0             # Linting
+mypy>=1.7.0               # Type checking
+pre-commit>=3.6.0         # Git hooks
+
+# ============ DOCUMENTATION ============
+mkdocs>=1.5.0             # Documentação
+mkdocs-material>=9.4.0    # Tema Material
+mkdocs-mermaid2-plugin>=1.1.0  # Diagramas
+
+# ============ LOGGING & MONITORING ============
+loguru>=0.7.0             # Logging avançado
+rich>=13.7.0              # Console output rico

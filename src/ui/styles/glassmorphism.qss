@@ -1,0 +1,362 @@
+/* 
+PitchAI - Glassmorphism Theme
+===========================
+
+Tema moderno com efeitos de glassmorphism 
+otimizado para aplicações de IA.
+*/
+
+/* ===== CORES PRINCIPAIS ===== */
+/* 
+Base: Nord Theme adaptado
+Background: #2E3440 (cinza escuro)
+Surface: #3B4252 (cinza médio)
+Primary: #88C0D0 (azul claro)
+Secondary: #A3BE8C (verde claro)
+Accent: #EBCB8B (amarelo)
+Warning: #D08770 (laranja)
+Error: #BF616A (vermelho)
+Text: #ECEFF4 (branco gelo)
+*/
+
+/* ===== JANELA PRINCIPAL ===== */
+QMainWindow {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 #2E3440,
+        stop: 0.5 #3B4252,
+        stop: 1 #2E3440
+    );
+    color: #ECEFF4;
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+
+/* ===== WIDGETS BASE ===== */
+QWidget {
+    background: transparent;
+    color: #ECEFF4;
+    selection-background-color: rgba(136, 192, 208, 0.3);
+}
+
+/* ===== FRAMES E CONTAINERS ===== */
+QFrame {
+    border: none;
+    background: transparent;
+}
+
+QFrame#headerFrame {
+    background: rgba(59, 66, 82, 0.8);
+    border: 1px solid rgba(129, 161, 193, 0.3);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+QFrame#metricFrame {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    backdrop-filter: blur(15px);
+}
+
+QFrame#metricFrame:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(136, 192, 208, 0.4);
+}
+
+QFrame#controlFrame {
+    background: rgba(76, 86, 106, 0.6);
+    border: 1px solid rgba(129, 161, 193, 0.25);
+    border-radius: 10px;
+    backdrop-filter: blur(20px);
+}
+
+/* ===== LABELS ===== */
+QLabel {
+    color: #ECEFF4;
+    background: transparent;
+}
+
+QLabel#titleLabel {
+    color: #ECEFF4;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+QLabel#sectionHeader {
+    color: #ECEFF4;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 12px 16px;
+    background: rgba(136, 192, 208, 0.15);
+    border: 1px solid rgba(136, 192, 208, 0.3);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+QLabel#statusLabel {
+    color: #D8DEE9;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+QLabel#timeLabel {
+    color: #88C0D0;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* ===== BOTÕES ===== */
+QPushButton {
+    background: rgba(136, 192, 208, 0.2);
+    border: 1px solid rgba(136, 192, 208, 0.4);
+    border-radius: 6px;
+    color: #ECEFF4;
+    font-weight: bold;
+    padding: 8px 16px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+QPushButton:hover {
+    background: rgba(136, 192, 208, 0.35);
+    border-color: rgba(136, 192, 208, 0.6);
+    transform: translateY(-1px);
+}
+
+QPushButton:pressed {
+    background: rgba(136, 192, 208, 0.5);
+    transform: translateY(0px);
+}
+
+QPushButton:disabled {
+    background: rgba(76, 86, 106, 0.3);
+    border-color: rgba(129, 161, 193, 0.2);
+    color: rgba(236, 239, 244, 0.5);
+}
+
+/* ===== BOTÃO PRINCIPAL ===== */
+QPushButton#mainButton {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 rgba(163, 190, 140, 0.9),
+        stop: 1 rgba(163, 190, 140, 0.7)
+    );
+    border: 2px solid rgba(163, 190, 140, 1.0);
+    border-radius: 10px;
+    color: #2E3440;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 14px 24px;
+    min-width: 160px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+QPushButton#mainButton:hover {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 rgba(163, 190, 140, 1.0),
+        stop: 1 rgba(163, 190, 140, 0.8)
+    );
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(163, 190, 140, 0.3);
+}
+
+QPushButton#mainButton:pressed {
+    background: rgba(143, 170, 120, 0.9);
+    transform: translateY(0px);
+}
+
+/* ===== BOTÃO DE GRAVAÇÃO ATIVO ===== */
+QPushButton#mainButton[recording="true"] {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 rgba(191, 97, 106, 0.9),
+        stop: 1 rgba(191, 97, 106, 0.7)
+    );
+    border-color: rgba(191, 97, 106, 1.0);
+    color: #ECEFF4;
+    animation: pulse 2s infinite;
+}
+
+QPushButton#mainButton[recording="true"]:hover {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 rgba(191, 97, 106, 1.0),
+        stop: 1 rgba(191, 97, 106, 0.8)
+    );
+}
+
+/* ===== BOTÕES SECUNDÁRIOS ===== */
+QPushButton#secondaryButton {
+    background: rgba(136, 192, 208, 0.25);
+    border: 1px solid rgba(136, 192, 208, 0.4);
+    border-radius: 8px;
+    color: #ECEFF4;
+    font-size: 12px;
+    padding: 10px 16px;
+    min-width: 110px;
+}
+
+QPushButton#secondaryButton:hover {
+    background: rgba(136, 192, 208, 0.4);
+    border-color: rgba(136, 192, 208, 0.6);
+}
+
+QPushButton#actionButton {
+    background: rgba(163, 190, 140, 0.3);
+    border: 1px solid rgba(163, 190, 140, 0.5);
+    border-radius: 5px;
+    color: #ECEFF4;
+    font-size: 11px;
+    padding: 6px 12px;
+}
+
+QPushButton#actionButton:hover {
+    background: rgba(163, 190, 140, 0.5);
+}
+
+/* ===== ÁREAS DE TEXTO ===== */
+QTextEdit {
+    background: rgba(46, 52, 64, 0.8);
+    border: 1px solid rgba(129, 161, 193, 0.25);
+    border-radius: 10px;
+    color: #ECEFF4;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 16px;
+    selection-background-color: rgba(136, 192, 208, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+QTextEdit#transcriptionArea {
+    background: rgba(46, 52, 64, 0.9);
+    border: 1px solid rgba(129, 161, 193, 0.3);
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+
+QTextEdit:focus {
+    border-color: rgba(136, 192, 208, 0.6);
+    outline: none;
+}
+
+/* ===== SCROLLBARS ===== */
+QScrollBar:vertical {
+    background: rgba(76, 86, 106, 0.3);
+    width: 12px;
+    border-radius: 6px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(136, 192, 208, 0.5);
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: rgba(136, 192, 208, 0.7);
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    background: rgba(76, 86, 106, 0.3);
+    height: 12px;
+    border-radius: 6px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background: rgba(136, 192, 208, 0.5);
+    border-radius: 6px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: rgba(136, 192, 208, 0.7);
+}
+
+/* ===== SCROLL AREAS ===== */
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+
+QScrollArea QWidget {
+    background: transparent;
+}
+
+/* ===== CARDS DE SUGESTÃO ===== */
+QFrame#suggestionCard {
+    background: rgba(163, 190, 140, 0.12);
+    border: 1px solid rgba(163, 190, 140, 0.25);
+    border-radius: 10px;
+    margin: 6px 0px;
+    padding: 16px;
+    backdrop-filter: blur(10px);
+}
+
+QFrame#suggestionCard:hover {
+    background: rgba(163, 190, 140, 0.2);
+    border-color: rgba(163, 190, 140, 0.4);
+    transform: translateY(-1px);
+}
+
+/* ===== SPLITTER ===== */
+QSplitter::handle {
+    background: rgba(129, 161, 193, 0.3);
+    width: 2px;
+    height: 2px;
+}
+
+QSplitter::handle:hover {
+    background: rgba(136, 192, 208, 0.6);
+}
+
+/* ===== PROGRESS BARS ===== */
+QProgressBar {
+    background: rgba(76, 86, 106, 0.5);
+    border: 1px solid rgba(129, 161, 193, 0.3);
+    border-radius: 8px;
+    text-align: center;
+    color: #ECEFF4;
+    font-weight: bold;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 0,
+        stop: 0 rgba(136, 192, 208, 0.8),
+        stop: 1 rgba(163, 190, 140, 0.8)
+    );
+    border-radius: 7px;
+}
+
+/* ===== TOOLTIPS ===== */
+QToolTip {
+    background: rgba(59, 66, 82, 0.95);
+    border: 1px solid rgba(129, 161, 193, 0.5);
+    border-radius: 6px;
+    color: #ECEFF4;
+    font-size: 12px;
+    padding: 8px 12px;
+    backdrop-filter: blur(15px);
+}
+
+/* ===== ANIMAÇÕES E EFEITOS ===== */
+* {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Efeito de pulsação para elementos de gravação */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
