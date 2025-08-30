@@ -15,7 +15,8 @@ from PyQt6.QtGui import QFont, QMouseEvent
 
 from .start_widget import StartWidget
 from .analysis_widget import AnalysisWidget
-
+from .summary_widget import SummaryWidget
+ 
 
 class MainWindow(QMainWindow):
     """Janela principal do PitchAI com design moderno e navegação entre telas."""
@@ -25,14 +26,29 @@ class MainWindow(QMainWindow):
         self.config = config
         self.app_instance = app_instance
         
-        # Configurar janela sem bordas (estilo moderno) - proporção 9:16
+        # Configurar janela sem bordas (estilo moderno)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         
-        # Proporção 9:16 (mais vertical, similar ao Loom)
-        width = 480
-        height = int(width * 16 / 9)  # 853
-        self.setGeometry(100, 100, width, height)
-        self.setFixedSize(width, height)  # Manter proporção fixa
+        # Responsividade baseada na resolução da tela
+        screen = self.screen().availableGeometry()
+        screen_width = screen.width()
+        screen_height = screen.height()
+        
+        # Para resolução 1920x1200, usar altura ~1100px (91% da tela)
+        # Manter proporção elegante baseada na resolução
+        if screen_width >= 1920:  # Desktop/laptop moderno
+            height = min(1100, int(screen_height * 0.91))
+            width = int(height * 0.6)  # Proporção 3:5 para desktop
+        else:  # Telas menores
+            height = int(screen_height * 0.85)
+            width = int(height * 0.6)
+        
+        # Centralizar na tela
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        self.setGeometry(x, y, width, height)
+        self.setFixedSize(width, height)
         
         # Variáveis para arrastar janela
         self.drag_pos = QPoint()
@@ -140,19 +156,20 @@ class MainWindow(QMainWindow):
         QMainWindow {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
                 stop: 0 rgba(15, 76, 129, 0.7), stop: 0.5 rgba(26, 45, 107, 0.8), stop: 1 rgba(46, 52, 64, 0.9));
+            border-radius: 25px;
         }
         
         QWidget#mainContainer {
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
                 stop: 0 rgba(255, 255, 255, 0.1), stop: 1 rgba(255, 255, 255, 0.05));
-            border-radius: 20px;
+            border-radius: 25px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
         }
         
         QFrame#titleBar {
             background: rgba(46, 52, 64, 0.8);
-            border-radius: 15px 15px 0px 0px;
+            border-radius: 25px 25px 0px 0px;
             border-bottom: 1px solid rgba(129, 161, 193, 0.2);
         }
         
@@ -230,6 +247,20 @@ class MainWindow(QMainWindow):
         # Ocultar indicadores de status
         self.npu_status_label.setVisible(False)
         self.recording_indicator.setVisible(False)
+        
+        # Reiniciar loading do StartWidget
+        self.start_widget.restart_loading()
+    
+    def _go_to_summary(self):
+        """Navegar para a tela de resumo."""
+        self.stacked_widget.setCurrentIndex(2)
+        
+        # Manter indicadores de status visíveis
+        self.npu_status_label.setVisible(True)
+        self.recording_indicator.setVisible(True)
+        
+        # Atualizar status para "concluído"
+        self.update_recording_status(False)
     
     @pyqtSlot()
     def update_npu_status(self, status: str):
