@@ -4,6 +4,7 @@ NPU Manager - Gerenciador da NPU Snapdragon
 
 Coordena todos os modelos ONNX rodando na NPU para
 processamento simultâneo de áudio e análise.
+Integra com ModelManager para carregamento unificado.
 """
 
 import logging
@@ -64,9 +65,10 @@ class NPUManager(QObject):
     objection_detected = pyqtSignal(str, list) # objeção, sugestões
     npu_status_changed = pyqtSignal(str)        # status
     
-    def __init__(self, config):
+    def __init__(self, config, model_manager=None):
         super().__init__()
         self.config = config
+        self.model_manager = model_manager
         self.logger = logging.getLogger(__name__)
         
         # Estado da NPU
@@ -117,29 +119,51 @@ class NPUManager(QObject):
     
     def _load_models(self):
         """Carregar modelos ONNX na NPU."""
-        models_to_load = {
-            "whisper": "whisper-base.onnx",
-            "sentiment": "distilbert-sentiment.onnx", 
-            "objection": "bert-objection.onnx",
-            "speaker": "ecapa-speaker.onnx"
-        }
-        
-        for model_name, filename in models_to_load.items():
-            model_path = self.config.get_model_path(filename)
+        if self.model_manager:
+            # Usar ModelManager se disponível
+            self.model_manager.load_manifest()
             
-            if model_path.exists():
+            # Carregar modelos essenciais
+            essential_models = ["whisper_base", "distilbert_sentiment", "bert_objection"]
+            
+            for model_name in essential_models:
                 try:
-                    # TODO: Carregar modelo real
-                    # session = ort.InferenceSession(str(model_path), providers=...)
-                    self.loaded_models[model_name] = {
-                        "path": model_path,
-                        "status": "loaded"
-                    }
-                    self.logger.info(f"✅ Modelo {model_name} carregado")
+                    session = self.model_manager.load_model_session(model_name)
+                    if session:
+                        self.loaded_models[model_name] = {
+                            "session": session,
+                            "status": "loaded"
+                        }
+                        self.logger.info(f"✅ Modelo {model_name} carregado via ModelManager")
+                    else:
+                        self.logger.warning(f"⚠️ Modelo {model_name} não pôde ser carregado")
                 except Exception as e:
                     self.logger.error(f"❌ Erro ao carregar {model_name}: {e}")
-            else:
-                self.logger.warning(f"⚠️ Modelo {filename} não encontrado")
+        else:
+            # Fallback para carregamento manual
+            models_to_load = {
+                "whisper": "whisper-base.onnx",
+                "sentiment": "distilbert-sentiment.onnx", 
+                "objection": "bert-objection.onnx",
+                "speaker": "ecapa-speaker.onnx"
+            }
+            
+            for model_name, filename in models_to_load.items():
+                model_path = self.config.get_model_path(filename)
+                
+                if model_path.exists():
+                    try:
+                        # TODO: Carregar modelo real
+                        # session = ort.InferenceSession(str(model_path), providers=...)
+                        self.loaded_models[model_name] = {
+                            "path": model_path,
+                            "status": "loaded"
+                        }
+                        self.logger.info(f"✅ Modelo {model_name} carregado")
+                    except Exception as e:
+                        self.logger.error(f"❌ Erro ao carregar {model_name}: {e}")
+                else:
+                    self.logger.warning(f"⚠️ Modelo {filename} não encontrado")
     
     def _enable_simulation_mode(self):
         """Habilitar modo de simulação."""
@@ -279,5 +303,9 @@ class NPUManager(QObject):
         self.active_workers.clear()
         self.loaded_models.clear()
         self.stop_demo_mode()
+        
+        # Limpar ModelManager se disponível
+        if self.model_manager:
+            self.model_manager.cleanup()
         
         self.logger.info("✅ NPU Manager finalizado")
