@@ -16,6 +16,7 @@ from PyQt6.QtGui import QFont, QMouseEvent
 
 from .start_widget import StartWidget
 from .analysis_widget import AnalysisWidget
+from .rag_suggestions_widget import RAGSuggestionsWidget
 from .summary_widget import SummaryWidget
 
 
@@ -66,11 +67,13 @@ class MainWindow(QMainWindow):
         # Criar e adicionar as telas
         self.start_widget = StartWidget()
         self.analysis_widget = AnalysisWidget(self.config, self.app_instance)
+        self.rag_widget = RAGSuggestionsWidget()
         self.summary_widget = SummaryWidget()
         
         self.stacked_widget.addWidget(self.start_widget)      # Índice 0
         self.stacked_widget.addWidget(self.analysis_widget)   # Índice 1
-        self.stacked_widget.addWidget(self.summary_widget)    # Índice 2
+        self.stacked_widget.addWidget(self.rag_widget)        # Índice 2
+        self.stacked_widget.addWidget(self.summary_widget)    # Índice 3
         
         # Iniciar na tela inicial
         self.stacked_widget.setCurrentIndex(0)
@@ -203,6 +206,13 @@ class MainWindow(QMainWindow):
         # Conectar navegação do SummaryWidget
         self.summary_widget.back_to_start_requested.connect(self._go_to_start)
         
+        # Conectar sinais RAG
+        if hasattr(self.app_instance, 'rag_suggestions_ready'):
+            self.app_instance.rag_suggestions_ready.connect(self._on_rag_suggestions_ready)
+        
+        if hasattr(self.app_instance, 'rag_error'):
+            self.app_instance.rag_error.connect(self._on_rag_error)
+        
         # Os sinais do app_instance já estão conectados no AnalysisWidget
         # Não precisamos reconectá-los aqui
     
@@ -219,6 +229,14 @@ class MainWindow(QMainWindow):
         
     def _go_to_summary(self):
         """Navegar para a tela de resumo."""
+        self.stacked_widget.setCurrentIndex(3)
+        
+        # Manter indicadores de status ocultos
+        self.npu_status_label.setVisible(False)
+        self.recording_indicator.setVisible(False)
+    
+    def _go_to_rag(self):
+        """Navegar para a tela de sugestões RAG."""
         self.stacked_widget.setCurrentIndex(2)
         
         # Manter indicadores de status ocultos
@@ -275,6 +293,9 @@ class MainWindow(QMainWindow):
         elif event.key() == Qt.Key.Key_F7:
             # F7 para ir ao resumo (para testes)
             self._go_to_summary()
+        elif event.key() == Qt.Key.Key_F8:
+            # F8 para ir às sugestões RAG (para testes)
+            self._go_to_rag()
         elif event.key() == Qt.Key.Key_Escape:
             # ESC para voltar à tela inicial
             self._go_to_start()
@@ -284,3 +305,17 @@ class MainWindow(QMainWindow):
         """Evento de fechamento da janela."""
         self.app_instance.shutdown()
         event.accept()
+    
+    @pyqtSlot(object)
+    def _on_rag_suggestions_ready(self, result):
+        """Callback quando sugestões RAG estão prontas."""
+        # Navegar para a tela RAG e exibir resultado
+        self._go_to_rag()
+        self.rag_widget.display_rag_result(result)
+    
+    @pyqtSlot(str)
+    def _on_rag_error(self, error_message):
+        """Callback quando há erro no RAG."""
+        # Navegar para a tela RAG e exibir erro
+        self._go_to_rag()
+        self.rag_widget.show_error(error_message)

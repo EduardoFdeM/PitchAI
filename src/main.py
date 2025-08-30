@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QCoreApplication
 from core.application import PitchAIApp
-from core.config import Config
+from core.config import create_config
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     qt_app.setQuitOnLastWindowClosed(True)
     
     # Carregar configurações
-    config = Config()
+    config = create_config()
     
     try:
         # Inicializar PitchAI

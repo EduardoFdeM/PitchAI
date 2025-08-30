@@ -45,6 +45,7 @@ python-dotenv>=1.0.0       # Variáveis de ambiente
 click>=8.1.7               # CLI interface
 tqdm>=4.66.0               # Barras de progresso
 requests>=2.31.0           # HTTP requests
+sseclient-py>=1.7.2        # Server-Sent Events para streaming LLM
 pillow>=10.0.0             # Processamento de imagens (para glassmorphism)
 psutil>=5.9.0              # Monitoramento de sistema
 
