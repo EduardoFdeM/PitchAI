@@ -9,14 +9,12 @@ e layout otimizado para vendas em tempo real.
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QPushButton, QFrame, QStackedWidget
-    
 )
 from PyQt6.QtCore import Qt, pyqtSlot, QPoint
 from PyQt6.QtGui import QFont, QMouseEvent
 
 from .start_widget import StartWidget
 from .analysis_widget import AnalysisWidget
-from .summary_widget import SummaryWidget
 
 
 class MainWindow(QMainWindow):
@@ -29,12 +27,12 @@ class MainWindow(QMainWindow):
         
         # Configurar janela sem bordas (estilo moderno) - proporção 9:16
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
         # Proporção 9:16 (mais vertical, similar ao Loom)
         width = 480
         height = int(width * 16 / 9)  # 853
         self.setGeometry(100, 100, width, height)
+        self.setFixedSize(width, height)  # Manter proporção fixa
         
         # Variáveis para arrastar janela
         self.drag_pos = QPoint()
