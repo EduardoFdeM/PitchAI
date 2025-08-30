@@ -96,6 +96,7 @@ class RecordingWidget(QWidget):
     """Widget principal de gravação com UI dinâmico."""
     
     # Sinais
+    analysis_requested = pyqtSignal()
     back_to_start_requested = pyqtSignal()
     
     def __init__(self, config, app_instance, parent=None):
@@ -135,29 +136,33 @@ class RecordingWidget(QWidget):
         container_layout.addLayout(header_layout)
         
         # ===== ÁREA CENTRAL =====
-        center_layout = QVBoxLayout()
+        center_widget = QWidget()
+        center_layout = QVBoxLayout(center_widget)
+        center_layout.addStretch()
         center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         center_layout.setSpacing(40)
         
         # Título Ready for your next meeting
-        title_label = QLabel("Ready for your next meeting")
+        title_label = QLabel("Ready for your<br>next meeting")
         title_font = QFont()
-        title_font.setPointSize(28)
+        title_font.setPointSize(36)
         title_font.setWeight(QFont.Weight.Light)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("color: rgba(175, 177, 240, 0.9);")
+        title_label.setWordWrap(True)
+        title_label.setStyleSheet("color: rgba(236, 239, 244, 0.9); line-height: 1.2;")
         
         # Botão principal com blur (Start Analysis)
         self.main_action_button = QPushButton("Start Analysis")
         self.main_action_button.setObjectName("blurActionButton")
         self.main_action_button.setFixedSize(280, 60)
-        self.main_action_button.clicked.connect(self._start_recording)
+        self.main_action_button.clicked.connect(self._start_analysis)
         
-        center_layout.addWidget(title_label)
+        center_layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignCenter)
         center_layout.addWidget(self.main_action_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        center_layout.addStretch()
         
-        container_layout.addLayout(center_layout)
+        container_layout.addWidget(center_widget, 1)
         container_layout.addStretch()
         
         main_layout.addWidget(self.main_container)
@@ -237,11 +242,9 @@ class RecordingWidget(QWidget):
             self.menu_widget.show()
             self.menu_widget.raise_()  # Trazer para frente
     
-    def _start_recording(self):
-        """Iniciar gravação (aqui seria onde o blur ocultaria elementos)."""
-        # Aqui implementaríamos a lógica de ocultar elementos com blur
-        # e mostrar os controles de gravação
-        pass
+    def _start_analysis(self):
+        """Emite o sinal para ir para a tela de análise."""
+        self.analysis_requested.emit()
     
     def _open_settings(self):
         """Abrir configurações."""

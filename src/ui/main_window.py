@@ -155,17 +155,18 @@ class MainWindow(QMainWindow):
         """Aplicar estilos glassmorphism moderno."""
         style = """
         QMainWindow {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(17, 24, 102, 0.9), stop: 0.5 rgba(73, 65, 206, 0.8), stop: 1 rgba(21, 21, 21, 0.95));
+            background-color: #151515;
             border-radius: 25px;
         }
         
         QWidget#mainContainer {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(175, 177, 240, 0.08), stop: 1 rgba(93, 31, 176, 0.05));
+            background: qradialgradient(cx: 0.5, cy: 0.5, radius: 0.8, 
+                fx: 0.5, fy: 0.5,
+                stop: 0 rgba(73, 65, 206, 0.4), 
+                stop: 0.4 rgba(93, 31, 176, 0.3), 
+                stop: 1 #151515);
             border-radius: 25px;
-            border: 1px solid rgba(175, 177, 240, 0.25);
-            backdrop-filter: blur(20px);
+            border: 1px solid rgba(175, 177, 240, 0.2);
         }
         
         QFrame#titleBar {
@@ -210,6 +211,10 @@ class MainWindow(QMainWindow):
         }
         """
         self.setStyleSheet(style)
+        
+        # O restante dos estilos para os widgets filhos continua o mesmo
+        # para manter a consistência que já tínhamos.
+        # Se quiser refinar mais algum elemento, me avise!
     
     def _connect_signals(self):
         """Conectar sinais da aplicação com a UI."""
@@ -221,6 +226,7 @@ class MainWindow(QMainWindow):
         
         # Conectar navegação do RecordingWidget
         self.recording_widget.back_to_start_requested.connect(self._go_to_start)
+        self.recording_widget.analysis_requested.connect(self._start_and_go_to_analysis)
         
         # Os sinais do app_instance já estão conectados no AnalysisWidget
         # Não precisamos reconectá-los aqui
@@ -237,12 +243,9 @@ class MainWindow(QMainWindow):
         self.update_npu_status("connected")
         
     def _go_to_summary(self):
-        """Navegar para a tela de resumo."""
-        self.stacked_widget.setCurrentIndex(2)
-        
-        # Manter indicadores de status ocultos
-        self.npu_status_label.setVisible(False)
-        self.recording_indicator.setVisible(False)
+        """Para a gravação e navega para a tela de resumo."""
+        self.app_instance.stop_recording()
+        self.stacked_widget.setCurrentIndex(3)
         
     def _go_to_start(self):
         """Navegar para a tela inicial."""
@@ -259,13 +262,10 @@ class MainWindow(QMainWindow):
         """Navegar para a tela de gravação (nova tela principal)."""
         self.stacked_widget.setCurrentIndex(1)
         
-    def _go_to_analysis(self):
-        """Navegar para a tela de análise."""
-        self.stacked_widget.setCurrentIndex(2)
-        
-    def _go_to_summary(self):
-        """Navegar para a tela de resumo."""
-        self.stacked_widget.setCurrentIndex(3)
+    def _start_and_go_to_analysis(self):
+        """Inicia a gravação e navega para a tela de análise."""
+        self.app_instance.start_recording()
+        self.stacked_widget.setCurrentIndex(2) # AnalysisWidget é o índice 2
     
     @pyqtSlot()
     def update_npu_status(self, status: str):

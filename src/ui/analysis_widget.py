@@ -5,13 +5,14 @@ Analysis Widget - Tela Principal de Análise
 Widget que agrega todos os componentes da tela de análise em tempo real.
 """
 
-from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QSplitter
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
 
-from .dashboard_widget import DashboardWidget
 from .transcription_widget import TranscriptionWidget
-from .suggestions_widget import SuggestionsWidget
-from .controls_widget import ControlsWidget
+from .objections_widget import ObjectionsWidget
+from .opportunities_widget import OpportunitiesWidget
+from .notes_widget import NotesWidget
+from .sentiment_widget import SentimentWidget
 
 class AnalysisWidget(QWidget):
     """Widget principal da tela de análise."""
@@ -24,62 +25,53 @@ class AnalysisWidget(QWidget):
         self._connect_signals()
 
     def _setup_ui(self):
-        """Configurar o layout da interface para formato vertical (9:16)."""
+        """Configurar o layout dinâmico da tela de análise."""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(8)
-        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(15, 15, 15, 15)
         
-        # Dashboard de métricas (mais compacto)
-        self.dashboard_widget = DashboardWidget(self.config)
-        self.dashboard_widget.setMaximumHeight(80)  # Reduzir altura
-        main_layout.addWidget(self.dashboard_widget)
+        # Ordem dos widgets: Sentimento, Objeções, Oportunidades, Anotações, Transcrição
         
-        # Conteúdo principal em layout vertical
-        content_widget = QWidget()
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setSpacing(5)
-        content_layout.setContentsMargins(0, 0, 0, 0)
+        # 1. Sentimento (Fixo)
+        self.sentiment_widget = SentimentWidget()
+        main_layout.addWidget(self.sentiment_widget)
         
-        # Transcrição (parte superior)
+        # 2. Objeções (Dinâmico)
+        self.objections_widget = ObjectionsWidget()
+        main_layout.addWidget(self.objections_widget)
+        
+        # 3. Oportunidades (Dinâmico)
+        self.opportunities_widget = OpportunitiesWidget()
+        main_layout.addWidget(self.opportunities_widget)
+        
+        # 4. Anotações (Dinâmico, mas vamos deixar visível por padrão)
+        self.notes_widget = NotesWidget()
+        self.notes_widget.show() # Diferente dos outros, começa visível
+        main_layout.addWidget(self.notes_widget)
+        
+        # 5. Transcrição (Fixo)
         self.transcription_widget = TranscriptionWidget(self.config)
-        content_layout.addWidget(self.transcription_widget, 3)  # 60% do espaço
+        main_layout.addWidget(self.transcription_widget, 1) # Ocupa espaço extra
         
-        # Sugestões (parte inferior)
-        self.suggestions_widget = SuggestionsWidget(self.config)
-        content_layout.addWidget(self.suggestions_widget, 2)  # 40% do espaço
-        
-        main_layout.addWidget(content_widget, 1)  # Expandir
-        
-        # Controles (compactos)
-        self.controls_widget = ControlsWidget(self.config)
-        self.controls_widget.setMaximumHeight(60)  # Reduzir altura
-        main_layout.addWidget(self.controls_widget)
+        main_layout.addStretch()
 
     def _connect_signals(self):
         """Conectar sinais da aplicação com a UI."""
-        # Conectar sinais do app_instance para os widgets filhos
+        # Sinais fixos
         self.app_instance.transcription_ready.connect(
             self.transcription_widget.add_transcription
         )
         self.app_instance.sentiment_updated.connect(
-            self.dashboard_widget.update_sentiment
+            self.sentiment_widget.update_sentiment
         )
+        
+        # Sinais dinâmicos
         self.app_instance.objection_detected.connect(
-            self.suggestions_widget.add_suggestion
+            self.objections_widget.set_objection
+        )
+        self.app_instance.opportunity_detected.connect(
+            self.opportunities_widget.set_opportunity
         )
         
-        # Conectar controles para o app_instance
-        self.controls_widget.start_recording.connect(self._start_demo)
-        self.controls_widget.stop_recording.connect(self._stop_demo)
-
-    def _start_demo(self):
-        """Iniciar a simulação de análise."""
-        self.app_instance.start_recording()
-        self.dashboard_widget.start_demo()
-        # Aqui poderíamos emitir um sinal para a MainWindow atualizar o status geral
-        
-    def _stop_demo(self):
-        """Parar a simulação de análise."""
-        self.app_instance.stop_recording()
-        self.dashboard_widget.stop_demo()
-        # Aqui poderíamos emitir um sinal para a MainWindow atualizar o status geral
+        # Conexão de controle (ex: botão de parar gravação)
+        # self.controls_widget.stop_recording.connect(self._stop_demo)

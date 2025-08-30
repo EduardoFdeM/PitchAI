@@ -37,10 +37,11 @@ class MockUIConfig:
 class FrontendApp(QObject):
     """Aplicação frontend-only com dados simulados."""
     
-    # Sinais para comunicação com UI (mesmo que o backend real)
-    transcription_ready = pyqtSignal(str, str)  # texto, speaker_id
-    sentiment_updated = pyqtSignal(dict)        # métricas de sentimento
-    objection_detected = pyqtSignal(str, list) # objeção, sugestões
+    # Sinais para comunicação com UI
+    transcription_ready = pyqtSignal(str, str)
+    sentiment_updated = pyqtSignal(float, str)
+    objection_detected = pyqtSignal(str)
+    opportunity_detected = pyqtSignal(str)
     
     def __init__(self, config):
         super().__init__()
@@ -71,6 +72,9 @@ class FrontendApp(QObject):
         
         self.objection_timer = QTimer()
         self.objection_timer.timeout.connect(self._simulate_objections)
+        
+        self.opportunity_timer = QTimer()
+        self.opportunity_timer.timeout.connect(self._simulate_opportunities)
     
     def initialize(self):
         """Inicializar aplicação frontend."""
@@ -95,10 +99,11 @@ class FrontendApp(QObject):
             print("🎤 Iniciando simulação de gravação...")
             
             # Iniciar timers de simulação
-            self.transcript_timer.start(4000)  # A cada 4 segundos
-            self.sentiment_timer.start(3000)   # A cada 3 segundos
-            self.objection_timer.start(8000)   # A cada 8 segundos
-    
+            self.transcript_timer.start(4000)
+            self.sentiment_timer.start(3000)
+            self.objection_timer.start(12000) # Objeções são mais raras
+            self.opportunity_timer.start(15000) # Oportunidades também
+
     def stop_recording(self):
         """Parar 'gravação' (simulação)."""
         if self.is_recording:
@@ -109,63 +114,37 @@ class FrontendApp(QObject):
             self.transcript_timer.stop()
             self.sentiment_timer.stop()
             self.objection_timer.stop()
+            self.opportunity_timer.stop()
     
     def _simulate_transcription(self):
         """Simular nova transcrição."""
         if self.current_line < len(self.transcript_lines):
             text, speaker = self.transcript_lines[self.current_line]
             self.transcription_ready.emit(text, speaker)
-            self.current_line += 1
-        else:
-            # Reiniciar ciclo
-            self.current_line = 0
+            self.current_line = (self.current_line + 1) % len(self.transcript_lines)
     
     def _simulate_sentiment(self):
         """Simular atualização de sentimento."""
-        sentiment_data = {
-            'sentiment': random.uniform(0.2, 0.9),
-            'engagement': random.uniform(0.6, 0.95),
-            'confidence': random.uniform(0.7, 0.98),
-            'emotion': random.choice(['positive', 'neutral', 'concerned', 'excited'])
-        }
-        self.sentiment_updated.emit(sentiment_data)
+        score = random.uniform(0.1, 0.9)
+        text = "Positivo"
+        if score < 0.4:
+            text = "Negativo"
+        elif score < 0.6:
+            text = "Neutro"
+        self.sentiment_updated.emit(score, text)
     
     def _simulate_objections(self):
         """Simular detecção de objeções."""
-        objections = [
-            ("preço", [
-                {
-                    "text": "Entendo sua preocupação com o investimento. Vamos falar sobre o ROI que nossos clientes têm visto nos primeiros 6 meses...",
-                    "confidence": 0.92,
-                    "category": "Objeção de Preço"
-                },
-                {
-                    "text": "Posso mostrar um case de sucesso de uma empresa similar à sua que reduziu custos em 30%...",
-                    "confidence": 0.87,
-                    "category": "Prova Social"
-                }
-            ]),
-            ("timing", [
-                {
-                    "text": "Que bom que você está sendo criterioso. Posso te ajudar com informações adicionais para facilitar sua análise?",
-                    "confidence": 0.89,
-                    "category": "Objeção de Timing"
-                }
-            ]),
-            ("concorrente", [
-                {
-                    "text": "Ótimo que estejam avaliando opções! Posso destacar nossos diferenciais únicos que agregam valor específico para seu cenário?",
-                    "confidence": 0.85,
-                    "category": "Concorrência"
-                }
-            ])
-        ]
-        
-        # Simular detecção ocasional
-        if random.random() < 0.4:  # 40% chance
-            objection, suggestions = random.choice(objections)
-            self.objection_detected.emit(objection, suggestions)
-    
+        objections = ["Preço", "Prazo de implementação", "Falta de um recurso específico", "Concorrência"]
+        if random.random() < 0.5: # 50% de chance a cada 12s
+            self.objection_detected.emit(random.choice(objections))
+
+    def _simulate_opportunities(self):
+        """Simular detecção de oportunidades."""
+        opportunities = ["Sinal de compra: 'Qual o próximo passo?'", "Oportunidade de upsell detectada.", "Cliente mencionou expansão futura."]
+        if random.random() < 0.5: # 50% de chance a cada 15s
+            self.opportunity_detected.emit(random.choice(opportunities))
+            
     def shutdown(self):
         """Encerrar aplicação."""
         print("🔄 Encerrando PitchAI Frontend...")
