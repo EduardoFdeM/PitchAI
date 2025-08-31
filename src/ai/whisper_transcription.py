@@ -1,280 +1,155 @@
 """
-Whisper Transcription - Transcrição em Tempo Real
-================================================
+Whisper Transcription - Transcrição em Tempo Real (ONNX NPU)
+============================================================
 
-Módulo de transcrição usando Whisper otimizado para NPU.
+Módulo de transcrição em tempo real utilizando o pipeline do Whisper
+com modelos Encoder e Decoder ONNX otimizados para a NPU.
 """
 
 import logging
 import numpy as np
 import time
-from typing import Optional, Dict, Any
-from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
-import onnxruntime as ort
+from typing import Optional
 
+from PyQt6.QtCore import QObject, pyqtSignal, QThread
+
+# Usaremos o processador do transformers apenas para pré e pós-processamento
+# A inferência será 100% via ONNX Runtime
 try:
-    from transformers import WhisperProcessor, WhisperForConditionalGeneration
+    from transformers import WhisperProcessor
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    print("⚠️ Transformers não disponível. Usando simulação.")
+    print("⚠️ Biblioteca `transformers` não encontrada. A transcrição real não funcionará.")
+    print("   Instale com: pip install transformers")
 
-class WhisperTranscriptionThread(QThread):
-    """Thread para transcrição contínua."""
+# Supondo que a classe ModelManager e AudioChunk estejam disponíveis
+# from ..core.contracts import AudioChunk (Exemplo de import)
+# from .model_manager import ModelManager (Exemplo de import)
+
+class WhisperASR(QObject):
+    """
+    Serviço de ASR (Automatic Speech Recognition) com Whisper ONNX.
+    Orquestra o pré-processamento, a execução do encoder-decoder e o pós-processamento.
+    """
+    transcription_ready = pyqtSignal(dict)  # Sinal emitido com o resultado da transcrição
     
-    transcription_ready = pyqtSignal(str, str, float)  # text, speaker_id, confidence
-    error_occurred = pyqtSignal(str)
-    
-    def __init__(self, config, audio_buffer, source="microphone"):
+    def __init__(self, model_manager):
         super().__init__()
-        self.config = config
-        self.audio_buffer = audio_buffer
-        self.source = source
-        self.is_running = False
-        
-        # Modelo Whisper
-        self.processor = None
-        self.model = None
-        self.session = None
-        
-        # Configurações
-        self.chunk_duration = 3.0  # segundos
-        self.chunk_samples = int(self.config.audio.sample_rate * self.chunk_duration)
-        self.overlap_samples = int(self.chunk_samples * 0.1)  # 10% overlap
-        
-        # Buffer interno
-        self.audio_chunk = []
-        self.last_transcription = ""
-    
-    def run(self):
-        """Loop principal de transcrição."""
-        try:
-            self._initialize_model()
-            self._transcription_loop()
-        except Exception as e:
-            self.error_occurred.emit(str(e))
-    
-    def _initialize_model(self):
-        """Inicializar modelo Whisper."""
-        if not TRANSFORMERS_AVAILABLE:
-            self.logger.warning("Transformers não disponível, usando simulação")
-            return
-        
-        try:
-            # Carregar modelo Whisper pequeno
-            model_name = "openai/whisper-tiny"
-            self.processor = WhisperProcessor.from_pretrained(model_name)
-            self.model = WhisperForConditionalGeneration.from_pretrained(model_name)
-            
-            # Tentar usar NPU se disponível
-            providers = ["QNNExecutionProvider", "CPUExecutionProvider"]
-            try:
-                # Converter modelo para ONNX se necessário
-                # TODO: Implementar conversão ONNX
-                pass
-            except Exception as e:
-                logging.warning(f"NPU não disponível para Whisper: {e}")
-            
-            logging.info(f"✅ Whisper inicializado: {model_name}")
-            
-        except Exception as e:
-            logging.error(f"Erro ao inicializar Whisper: {e}")
-            raise
-    
-    def _transcription_loop(self):
-        """Loop de transcrição contínua."""
-        self.is_running = True
-        
-        while self.is_running:
-            try:
-                # Obter áudio do buffer
-                audio_data = self.audio_buffer.get(self.source, [])
-                
-                if len(audio_data) >= self.chunk_samples:
-                    # Extrair chunk
-                    chunk = audio_data[-self.chunk_samples:]
-                    
-                    # Processar transcrição
-                    if self.model and self.processor:
-                        text, confidence = self._transcribe_chunk(chunk)
-                    else:
-                        text, confidence = self._simulate_transcription(chunk)
-                    
-                    # Emitir resultado se houver texto
-                    if text and text.strip() and text != self.last_transcription:
-                        self.transcription_ready.emit(text, self.source, confidence)
-                        self.last_transcription = text
-                
-                # Aguardar um pouco
-                time.sleep(0.1)  # 100ms
-                
-            except Exception as e:
-                logging.error(f"Erro no loop de transcrição: {e}")
-                break
-    
-    def _transcribe_chunk(self, audio_chunk: np.ndarray) -> tuple[str, float]:
-        """Transcrever um chunk de áudio."""
-        try:
-            # Preparar áudio para o modelo
-            # Whisper espera áudio em 16kHz
-            if self.config.audio.sample_rate != 16000:
-                # TODO: Implementar resampling
-                pass
-            
-            # Processar com Whisper
-            inputs = self.processor(audio_chunk, sampling_rate=16000, return_tensors="pt")
-            
-            # Gerar tokens
-            predicted_ids = self.model.generate(inputs["input_features"])
-            
-            # Decodificar
-            transcription = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
-            
-            # Calcular confiança (simplificado)
-            confidence = 0.9  # TODO: Implementar cálculo real de confiança
-            
-            return transcription, confidence
-            
-        except Exception as e:
-            logging.error(f"Erro na transcrição: {e}")
-            return "", 0.0
-    
-    def _simulate_transcription(self, audio_chunk: np.ndarray) -> tuple[str, float]:
-        """Simular transcrição para desenvolvimento."""
-        # Simular transcrição baseada no volume do áudio
-        volume = np.mean(np.abs(audio_chunk))
-        
-        if volume > 0.01:  # Se há áudio
-            sample_texts = [
-                "Olá, como posso ajudá-lo?",
-                "Entendo sua preocupação",
-                "Vamos falar sobre isso",
-                "Qual é o seu orçamento?",
-                "Posso mostrar um exemplo"
-            ]
-            
-            import random
-            text = random.choice(sample_texts)
-            confidence = random.uniform(0.7, 0.95)
-            
-            return text, confidence
-        
-        return "", 0.0
-    
-    def stop_transcription(self):
-        """Parar transcrição."""
-        self.is_running = False
-
-
-class WhisperTranscription(QObject):
-    """Gerenciador de transcrição Whisper."""
-    
-    transcription_ready = pyqtSignal(str, str, float)  # text, speaker_id, confidence
-    error_occurred = pyqtSignal(str)
-    
-    def __init__(self, config, audio_capture):
-        super().__init__()
-        self.config = config
-        self.audio_capture = audio_capture
         self.logger = logging.getLogger(__name__)
+        self.model_manager = model_manager
         
-        # Threads de transcrição
-        self.mic_transcription_thread: Optional[WhisperTranscriptionThread] = None
-        self.loopback_transcription_thread: Optional[WhisperTranscriptionThread] = None
+        self.processor = None
+        self.encoder_session = None
+        self.decoder_session = None
         
-        self.is_transcribing = False
-    
+        self.is_initialized = False
+
     def initialize(self):
-        """Inicializar transcrição."""
-        try:
-            self.logger.info("🎤 Inicializando transcrição Whisper...")
-            
-            if not TRANSFORMERS_AVAILABLE:
-                self.logger.warning("⚠️ Transformers não disponível, usando simulação")
-            
-            self.logger.info("✅ Transcrição inicializada")
-            
-        except Exception as e:
-            self.logger.error(f"❌ Erro ao inicializar transcrição: {e}")
-    
-    def start(self):
-        """Iniciar transcrição."""
-        if self.is_transcribing:
+        """Carrega os modelos e o processador."""
+        if not TRANSFORMERS_AVAILABLE:
+            self.logger.error("Biblioteca `transformers` é necessária para o WhisperASR.")
             return
+
+        try:
+            self.logger.info("Inicializando o processador do Whisper...")
+            # Usaremos o 'openai/whisper-tiny' pois corresponde aos modelos que você tem
+            self.processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
+            
+            self.logger.info("Carregando sessões ONNX do Whisper via ModelManager...")
+            self.encoder_session = self.model_manager.get_session("whisper_tiny_encoder")
+            self.decoder_session = self.model_manager.get_session("whisper_tiny_decoder")
+            
+            if not self.encoder_session or not self.decoder_session:
+                raise RuntimeError("Falha ao carregar uma ou mais sessões ONNX do Whisper.")
+
+            self.is_initialized = True
+            self.logger.info("✅ WhisperASR inicializado com sucesso.")
+
+        except Exception as e:
+            self.logger.error(f"❌ Falha ao inicializar o WhisperASR: {e}")
+            self.is_initialized = False
+            
+    def transcribe(self, audio_chunk: np.ndarray, source: str, call_id: str, ts_ms: int) -> Optional[dict]:
+        """
+        Executa a transcrição de um chunk de áudio.
+
+        Args:
+            audio_chunk (np.ndarray): Array numpy com o áudio PCM 16-bit @ 16kHz.
+            source (str): Origem do áudio ('mic' ou 'loopback').
+            call_id (str): ID da chamada.
+            ts_ms (int): Timestamp do chunk.
+
+        Returns:
+            Optional[dict]: Um dicionário com a transcrição ou None se não houver fala.
+        """
+        if not self.is_initialized:
+            self.logger.warning("WhisperASR não foi inicializado. Impossível transcrever.")
+            return None
+
+        start_time = time.perf_counter()
         
         try:
-            # Iniciar transcrição do microfone
-            self.mic_transcription_thread = WhisperTranscriptionThread(
-                self.config, 
-                self.audio_capture.audio_buffer, 
-                "microphone"
-            )
-            self.mic_transcription_thread.transcription_ready.connect(self._handle_transcription)
-            self.mic_transcription_thread.error_occurred.connect(self.error_occurred)
-            self.mic_transcription_thread.start()
+            # 1. Pré-processamento: Extrair features (log-mel spectrogram)
+            # O áudio já deve estar em float32 no range [-1, 1]
+            audio_float32 = audio_chunk.astype(np.float32) / 32768.0
+            input_features = self.processor(
+                audio_float32, 
+                sampling_rate=16000, 
+                return_tensors="np"
+            ).input_features
             
-            # Tentar iniciar transcrição de loopback
-            try:
-                self.loopback_transcription_thread = WhisperTranscriptionThread(
-                    self.config, 
-                    self.audio_capture.audio_buffer, 
-                    "loopback"
+            # 2. Executar Encoder
+            encoder_outputs = self.encoder_session.run(None, {"input_features": input_features})
+            encoder_hidden_states = encoder_outputs[0]
+
+            # 3. Executar Decoder (Greedy Search)
+            # Começamos com os tokens de início de transcrição
+            decoder_input_ids = np.array([[self.processor.tokenizer.bos_token_id]], dtype=np.int64)
+            
+            # Gerar a sequência de tokens de forma auto-regressiva
+            for _ in range(self.processor.tokenizer.model_max_length):
+                decoder_outputs = self.decoder_session.run(
+                    None,
+                    {
+                        "input_ids": decoder_input_ids,
+                        "encoder_hidden_states": encoder_hidden_states,
+                    },
                 )
-                self.loopback_transcription_thread.transcription_ready.connect(self._handle_transcription)
-                self.loopback_transcription_thread.error_occurred.connect(self.error_occurred)
-                self.loopback_transcription_thread.start()
-                self.logger.info("✅ Transcrição de loopback iniciada")
-            except Exception as e:
-                self.logger.warning(f"⚠️ Transcrição de loopback não disponível: {e}")
+                
+                # Obter o token com a maior probabilidade (greedy)
+                next_token_logits = decoder_outputs[0][0, -1, :]
+                next_token_id = np.argmax(next_token_logits)
+                
+                # Adicionar o novo token à sequência
+                decoder_input_ids = np.append(decoder_input_ids, [[next_token_id]], axis=1).astype(np.int64)
+
+                # Parar se o token de fim de sequência for gerado
+                if next_token_id == self.processor.tokenizer.eos_token_id:
+                    break
+
+            # 4. Pós-processamento: Decodificar os tokens para texto
+            transcribed_ids = decoder_input_ids[0]
+            transcription = self.processor.tokenizer.decode(transcribed_ids, skip_special_tokens=True)
             
-            self.is_transcribing = True
-            self.logger.info("🎤 Transcrição iniciada")
-            
+            end_time = time.perf_counter()
+            processing_time_ms = (end_time - start_time) * 1000
+
+            if transcription.strip():
+                result = {
+                    "call_id": call_id,
+                    "source": source,
+                    "ts_start_ms": ts_ms,
+                    "ts_end_ms": ts_ms + int(len(audio_chunk) / 16), # Aproximado
+                    "text": transcription.strip(),
+                    "confidence": 0.95, # Placeholder, confiança real é mais complexa
+                    "processing_time_ms": processing_time_ms
+                }
+                self.logger.info(f"Transcrição ({source}): '{result['text']}' (em {processing_time_ms:.0f} ms)")
+                self.transcription_ready.emit(result)
+                return result
+
         except Exception as e:
-            self.logger.error(f"Erro ao iniciar transcrição: {e}")
-            self.error_occurred.emit(str(e))
-    
-    def stop(self):
-        """Parar transcrição."""
-        if not self.is_transcribing:
-            return
+            self.logger.error(f"❌ Erro durante a transcrição: {e}", exc_info=True)
         
-        try:
-            # Parar thread do microfone
-            if self.mic_transcription_thread:
-                self.mic_transcription_thread.stop_transcription()
-                self.mic_transcription_thread.quit()
-                self.mic_transcription_thread.wait()
-                self.mic_transcription_thread = None
-            
-            # Parar thread de loopback
-            if self.loopback_transcription_thread:
-                self.loopback_transcription_thread.stop_transcription()
-                self.loopback_transcription_thread.quit()
-                self.loopback_transcription_thread.wait()
-                self.loopback_transcription_thread = None
-            
-            self.is_transcribing = False
-            self.logger.info("⏹️ Transcrição parada")
-            
-        except Exception as e:
-            self.logger.error(f"Erro ao parar transcrição: {e}")
-    
-    def _handle_transcription(self, text: str, speaker_id: str, confidence: float):
-        """Processar transcrição recebida."""
-        # Mapear source para speaker_id
-        if speaker_id == "microphone":
-            speaker = "vendor"
-        elif speaker_id == "loopback":
-            speaker = "client"
-        else:
-            speaker = "unknown"
-        
-        # Emitir para UI
-        self.transcription_ready.emit(text, speaker, confidence)
-    
-    def cleanup(self):
-        """Limpar recursos."""
-        self.logger.info("🔄 Limpando recursos de transcrição...")
-        self.stop()
-        self.logger.info("✅ Recursos de transcrição limpos") 
+        return None 
