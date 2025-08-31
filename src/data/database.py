@@ -41,6 +41,9 @@ class DatabaseManager:
         try:
             cursor = self.connection.cursor()
             
+            # Aplicar migrações
+            self._apply_migrations()
+            
             # Tabela de vendedores
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS sellers (
@@ -122,6 +125,50 @@ class DatabaseManager:
             
         except Exception as e:
             self.logger.error(f"❌ Erro ao criar tabelas: {e}")
+            raise
+    
+    def _apply_migrations(self):
+        """Aplicar migrações do banco de dados."""
+        try:
+            # Verificar se a tabela de migrações existe
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    migration_name TEXT UNIQUE NOT NULL,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Lista de migrações
+            migrations = [
+                "0006_real_data_tables.sql"
+            ]
+            
+            for migration in migrations:
+                # Verificar se já foi aplicada
+                cursor.execute("SELECT COUNT(*) FROM migrations WHERE migration_name = ?", (migration,))
+                if cursor.fetchone()[0] == 0:
+                    # Aplicar migração
+                    migration_path = Path(__file__).parent / "migrations" / migration
+                    if migration_path.exists():
+                        with open(migration_path, 'r') as f:
+                            sql = f.read()
+                        
+                        # Executar SQL da migração
+                        cursor.executescript(sql)
+                        
+                        # Registrar migração aplicada
+                        cursor.execute("INSERT INTO migrations (migration_name) VALUES (?)", (migration,))
+                        
+                        self.logger.info(f"✅ Migração aplicada: {migration}")
+                    else:
+                        self.logger.warning(f"⚠️ Arquivo de migração não encontrado: {migration}")
+            
+            self.connection.commit()
+            
+        except Exception as e:
+            self.logger.error(f"❌ Erro ao aplicar migrações: {e}")
             raise
     
     def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
