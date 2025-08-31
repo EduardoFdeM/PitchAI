@@ -313,9 +313,9 @@ class SettingsWidget(QWidget):
             # Iniciar captura real de áudio se disponível
             if self.audio_capture and not self.audio_capture.is_capturing:
                 try:
-                                            # Configurar dispositivo específico
-                        if selected_device is not None and hasattr(self.audio_capture, 'set_input_device'):
-                            self.audio_capture.set_input_device(selected_device)
+                    # Configurar dispositivo específico
+                    if selected_device is not None and hasattr(self.audio_capture, 'set_input_device'):
+                        self.audio_capture.set_input_device(selected_device)
                     
                     self.audio_capture.add_callback(self._on_audio_data)
                     self.audio_capture.start()
