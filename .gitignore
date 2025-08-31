@@ -55,9 +55,7 @@ data/
 *.sqlite3
 
 # Models (large files)
-models/*.onnx
-models/*.bin
-models/*.safetensors
+Models/
 
 # Temporary files
 tmp/

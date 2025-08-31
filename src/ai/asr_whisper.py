@@ -388,28 +388,28 @@ class TranscriptionService(QObject):
             self.buf_loopback = buffer
     
     def _transcribe_window(self, audio_window: np.ndarray) -> tuple[str, float]:
-        """Transcrever uma janela de áudio."""
+        """Transcrever uma janela de áudio em português brasileiro."""
         if not self.session:
             # Modo simulação
-            return self._simulate_transcription(audio_window)
-        
+            return self._simulate_transcription_pt_br(audio_window)
+
         try:
             # Pré-processar áudio
             audio_float = self.preprocessor.normalize_audio(audio_window)
             audio_padded = self.preprocessor.pad_or_trim(audio_float, max_length=self.window_samples)
-            
+
             # Preparar input
             input_name = self.session.get_inputs()[0].name
             input_data = audio_padded[np.newaxis, :]  # [1, T]
-            
+
             # Inferência
             outputs = self.session.run(None, {input_name: input_data})
-            
-            # Decodificar saída (simplificado para MVP)
+
+            # Decodificar saída com foco em PT-BR
             text, confidence = self._decode_whisper_output(outputs)
-            
+
             return text, confidence
-            
+
         except Exception as e:
             self.logger.error(f"Erro na transcrição: {e}")
             return "", 0.0
@@ -455,18 +455,33 @@ class TranscriptionService(QObject):
             self.logger.error(f"Erro na decodificação simulada: {e}")
             return "", 0.0
     
-    def _simulate_transcription(self, audio_window: np.ndarray) -> tuple[str, float]:
-        """Simular transcrição para desenvolvimento."""
+    def _simulate_transcription_pt_br(self, audio_window: np.ndarray) -> tuple[str, float]:
+        """Simular transcrição em português brasileiro para desenvolvimento."""
         # Simular baseado no RMS do áudio
         rms = np.sqrt(np.mean(audio_window.astype(np.float32)**2))
-        
+
         if rms > 1000:  # Áudio com sinal
-            text = "Texto simulado da transcrição"
+            # Exemplos realistas de fala em português brasileiro
+            pt_br_examples = [
+                "Olá, bom dia!",
+                "Gostaria de saber mais sobre o produto",
+                "Qual é o preço da solução?",
+                "Entendi, obrigado pela informação",
+                "Vamos marcar uma reunião para discutir isso",
+                "Preciso falar com o responsável",
+                "O orçamento está aprovado",
+                "Quando podemos começar o projeto?",
+                "Está dentro do nosso orçamento",
+                "Vamos analisar as opções disponíveis"
+            ]
+
+            import random
+            text = random.choice(pt_br_examples)
             confidence = 0.8
         else:  # Silêncio
             text = ""
             confidence = 0.0
-        
+
         return text, confidence
     
     def _process_remaining_buffers(self):

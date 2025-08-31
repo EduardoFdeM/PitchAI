@@ -12,6 +12,16 @@ from typing import Optional
 
 
 @dataclass
+class AudioConfig:
+    """Configuração de áudio."""
+    sample_rate: int = 16000
+    chunk_duration_ms: int = 1000
+    chunk_size: int = 1024  # frames por buffer
+    channels: int = 1
+    device_name: Optional[str] = None  # None = dispositivo padrão
+
+
+@dataclass
 class Config:
     """Configuração principal da aplicação."""
     
@@ -23,10 +33,7 @@ class Config:
     cache_dir: Path
     
     # ===== AUDIO =====
-    sample_rate: int = 16000
-    chunk_duration_ms: int = 1000
-    channels: int = 1
-    device_name: Optional[str] = None  # None = dispositivo padrão
+    audio: AudioConfig
     
     # ===== NPU & AI =====
     onnx_providers: list = None  # ['QNNExecutionProvider', 'CPUExecutionProvider']
@@ -75,9 +82,12 @@ def create_config(app_dir: Optional[Path] = None) -> Config:
         cache_dir=app_dir / "cache",
         
         # Configurações de áudio
-        sample_rate=16000,
-        chunk_duration_ms=1000,
-        channels=1,
+        audio=AudioConfig(
+            sample_rate=16000,
+            chunk_duration_ms=1000,
+            chunk_size=1024,
+            channels=1
+        ),
         
         # Configurações NPU
         onnx_providers=['QNNExecutionProvider', 'CPUExecutionProvider'],
