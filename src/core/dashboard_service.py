@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from data.database import DatabaseManager
-from data.dao_mentor import DAOMentor
+# DAOMentor removido - funcionalidade será implementada posteriormente
 
 
 @dataclass
@@ -61,9 +61,8 @@ class CallHistory:
 class DashboardService:
     """Serviço de dashboard que integra frontend com backend."""
     
-    def __init__(self, database: DatabaseManager, dao_mentor: DAOMentor):
+    def __init__(self, database: DatabaseManager):
         self.database = database
-        self.dao_mentor = dao_mentor
         self.logger = logging.getLogger(__name__)
         self._create_dashboard_tables()
     
@@ -116,8 +115,8 @@ class DashboardService:
     def get_dashboard_data(self, seller_id: str = "giovanna") -> Dict[str, Any]:
         """Obter todos os dados do dashboard para um vendedor."""
         try:
-            # Dados do vendedor
-            seller_xp = self.dao_mentor.get_seller_xp(seller_id)
+            # Dados do vendedor (implementação futura)
+            seller_xp = 0  # Valor padrão até implementação do sistema de XP
             
             # Metas atuais
             current_goals = self._get_current_goals(seller_id)
@@ -199,9 +198,8 @@ class DashboardService:
         """Criar meta padrão para o vendedor."""
         goal_id = f"goal_{seller_id}_{start.strftime('%Y%m')}"
         
-        # Metas padrão baseadas no nível do vendedor
-        seller_xp = self.dao_mentor.get_seller_xp(seller_id)
-        level = seller_xp['level']
+        # Metas padrão baseadas no nível do vendedor (implementação futura)
+        level = 1  # Nível padrão até implementação do sistema de XP
         
         if level >= 10:  # Sênior
             target_units = 50

@@ -1,8 +1,8 @@
 """
-PitchAI - NPU Manager
-====================
+PitchAI - ONNX Manager
+======================
 
-Gerenciador da NPU para execução de modelos de IA em tempo real.
+Gerenciador ONNX para execução de modelos de IA em tempo real.
 Preparado para integração com modelos ONNX reais.
 """
 
@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 import time
 from datetime import datetime
+from PyQt6.QtCore import QObject, pyqtSignal
 
 try:
     import onnxruntime as ort
@@ -21,10 +22,16 @@ except ImportError:
     logging.warning("⚠️ ONNX Runtime não disponível")
 
 
-class NPUManager:
-    """Gerenciador da NPU para modelos de IA."""
-    
+class ONNXManager(QObject):
+    """Gerenciador ONNX para modelos de IA."""
+
+    # Sinais para comunicação
+    transcription_ready = pyqtSignal(str, str)  # texto, speaker_id
+    sentiment_updated = pyqtSignal(dict)        # métricas de sentimento
+    objection_detected = pyqtSignal(str, list) # objeção, sugestões
+
     def __init__(self, config):
+        super().__init__()
         self.config = config
         self.logger = logging.getLogger(__name__)
         
@@ -431,7 +438,35 @@ class NPUManager:
             'speaker_available': self.speaker_model is not None,
             'simulation_mode': not self.models_loaded
         }
-    
+
+    def process_audio(self, audio_data):
+        """Processar dados de áudio e emitir sinais."""
+        try:
+            self.logger.debug(f"📡 Processando {len(audio_data)} bytes de áudio")
+
+            # Processar transcrição
+            transcription = self.transcribe_audio(audio_data)
+            if transcription:
+                self.transcription_ready.emit(transcription, "unknown")
+
+            # Processar sentimento
+            sentiment = self.analyze_sentiment(audio_data)
+            if sentiment:
+                self.sentiment_updated.emit(sentiment)
+
+            # Detectar objeções
+            objections = self.detect_objections(audio_data)
+            if objections:
+                self.objection_detected.emit(objections[0], objections[1:])
+
+        except Exception as e:
+            self.logger.error(f"❌ Erro ao processar áudio: {e}")
+
+    def cleanup(self):
+        """Limpar recursos do ONNX Manager."""
+        self.logger.info("🧹 Limpando ONNX Manager...")
+        self.shutdown()
+
     def shutdown(self):
         """Encerrar NPU Manager."""
         self.logger.info("🔄 Encerrando NPU Manager...")

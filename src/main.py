@@ -3,7 +3,7 @@ PitchAI - Ponto de Entrada Principal
 ==================================
 
 Inicializa a aplicação PitchAI com interface PyQt6
-e pipeline de IA na NPU.
+e pipeline de IA com ONNX.
 """
 
 import sys

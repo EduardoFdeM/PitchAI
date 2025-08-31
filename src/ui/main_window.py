@@ -184,9 +184,9 @@ class MainWindow(QMainWindow):
         title_font.setWeight(QFont.Weight.Bold)
         title_label.setFont(title_font)
         
-        # Status NPU
-        self.npu_status_label = QLabel("NPU: Ativo")
-        self.npu_status_label.setObjectName("statusIndicator")
+        # Status ONNX
+        self.onnx_status_label = QLabel("ONNX: Ativo")
+        self.onnx_status_label.setObjectName("statusIndicator")
         
         # Indicador de gravação
         self.recording_indicator = QLabel("🔴")
@@ -195,7 +195,7 @@ class MainWindow(QMainWindow):
         
         title_layout.addWidget(title_label)
         title_layout.addStretch()
-        title_layout.addWidget(self.npu_status_label)
+        title_layout.addWidget(self.onnx_status_label)
         title_layout.addWidget(self.recording_indicator)
         
         # Botões de controle da janela

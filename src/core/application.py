@@ -21,13 +21,8 @@ from .performance_monitor import PerformanceMonitor, profile_operation
 from .cache_manager import CacheManager, cache_result
 from ui.main_window import MainWindow
 from ai.onnx_manager import ONNXManager
-from ai.anythingllm_client import AnythingLLMClient
 from audio.capture import AudioCapture
 from data.database import DatabaseManager
-from data.dao_mentor import DAOMentor
-from client_profile.service import ClientProfileService
-from mentor.mentor_engine import MentorEngine
-from mentor.coach_feedback import CoachFeedback
 from .dashboard_service import DashboardService
 
 
@@ -49,16 +44,7 @@ class PitchAIApp(QObject):
         self.onnx_manager: Optional[ONNXManager] = None
         self.audio_capture: Optional[AudioCapture] = None
         self.database: Optional[DatabaseManager] = None
-        
-        # Componentes de IA e LLM
-        self.anythingllm_client: Optional[AnythingLLMClient] = None
-        
-        # Componentes do Mentor Engine
-        self.dao_mentor: Optional[DAOMentor] = None
-        self.client_profile_service: Optional[ClientProfileService] = None
-        self.coach_feedback: Optional[CoachFeedback] = None
-        self.mentor_engine: Optional[MentorEngine] = None
-        
+
         # Componente do Dashboard
         self.dashboard_service: Optional[DashboardService] = None
         
@@ -102,17 +88,11 @@ class PitchAIApp(QObject):
             
             # 1. Inicializar banco de dados
             self._initialize_database()
-            
+
             # 2. Inicializar gerenciador ONNX
             self._initialize_onnx()
-            
-            # 3. Inicializar AnythingLLM
-            self._initialize_anythingllm()
-            
-            # 4. Inicializar Mentor Engine
-            self._initialize_mentor_engine()
-            
-            # 5. Inicializar Dashboard Service
+
+            # 3. Inicializar Dashboard Service
             self._initialize_dashboard_service()
             
             # 6. Inicializar captura de áudio
@@ -152,56 +132,18 @@ class PitchAIApp(QObject):
         self.logger.info("Banco de dados inicializado")
     
     @handle_errors(severity=ErrorSeverity.HIGH, category=ErrorCategory.AI_MODEL, retry=True)
-    def _initialize_npu(self):
-        """Inicializar gerenciador NPU."""
-        self.npu_manager = NPUManager(self.config)
-        self.npu_manager.initialize()
-        self.logger.info("✅ NPU inicializada")
+    def _initialize_onnx(self):
+        """Inicializar gerenciador ONNX."""
+        self.onnx_manager = ONNXManager(self.config)
+        self.onnx_manager.initialize()
+        self.logger.info("✅ ONNX inicializada")
     
-    @handle_errors(severity=ErrorSeverity.MEDIUM, category=ErrorCategory.NETWORK, fallback=True)
-    def _initialize_anythingllm(self):
-        """Inicializar cliente AnythingLLM."""
-        self.anythingllm_client = AnythingLLMClient(
-            base_url=self.config.anythingllm_url,
-            api_key=self.config.anythingllm_api_key,
-            timeout=self.config.anythingllm_timeout
-        )
-        
-        if self.anythingllm_client.health_check():
-            self.logger.info("✅ AnythingLLM conectado")
-        else:
-            self.logger.warning("⚠️ AnythingLLM não disponível - usando fallback")
-    
-    @handle_errors(severity=ErrorSeverity.HIGH, category=ErrorCategory.CONFIGURATION, retry=True)
-    def _initialize_mentor_engine(self):
-        """Inicializar Mentor Engine."""
-        # 1. Inicializar DAO Mentor
-        self.dao_mentor = DAOMentor(self.database.connection)
-        
-        # 2. Inicializar Client Profile Service
-        self.client_profile_service = ClientProfileService(self.dao_mentor)
-        
-        # 3. Inicializar Coach Feedback com AnythingLLM
-        self.coach_feedback = CoachFeedback(
-            llm_client=self.anythingllm_client,
-            dao_mentor=self.dao_mentor,
-            timeout_s=self.config.anythingllm_timeout
-        )
-        
-        # 4. Inicializar Mentor Engine
-        self.mentor_engine = MentorEngine(
-            event_bus=self._create_event_bus(),
-            dao=self.dao_mentor,
-            client_profile_service=self.client_profile_service,
-            coach=self.coach_feedback
-        )
-        
-        self.logger.info("✅ Mentor Engine inicializado")
+
     
     @handle_errors(severity=ErrorSeverity.MEDIUM, category=ErrorCategory.DATABASE, retry=True)
     def _initialize_dashboard_service(self):
         """Inicializar Dashboard Service."""
-        self.dashboard_service = DashboardService(self.database, self.dao_mentor)
+        self.dashboard_service = DashboardService(self.database)
         self.logger.info("✅ Dashboard Service inicializado")
     
     def _initialize_error_handler(self):
@@ -225,42 +167,7 @@ class PitchAIApp(QObject):
     def _initialize_cache_manager(self):
         """Inicializar sistema de cache."""
         self.cache_manager = CacheManager(self.config)
-        
-        # Configurar prefetch para operações comuns
-        self.cache_manager.register_prefetch_pattern(
-            "rag_passages", 
-            lambda key: self._prefetch_rag_passages(key)
-        )
-        
         self.logger.info("✅ Sistema de cache inicializado")
-    
-    def _prefetch_rag_passages(self, key: str):
-        """Prefetch de passagens RAG."""
-        try:
-            # Extrair categoria da chave
-            if "preco" in key:
-                return self._get_prefetch_passages("preco")
-            elif "timing" in key:
-                return self._get_prefetch_passages("timing")
-            # Adicionar mais categorias conforme necessário
-        except Exception as e:
-            self.logger.warning(f"Erro no prefetch: {e}")
-            return None
-    
-    def _get_prefetch_passages(self, category: str):
-        """Obter passagens para prefetch."""
-        # Implementação simples - em produção seria mais sofisticada
-        return [{"id": f"prefetch_{category}", "content": f"Conteúdo {category}"}]
-    
-    def _create_event_bus(self):
-        """Criar um EventBus robusto para o Mentor Engine."""
-        from .event_bus import EventBus
-        
-        # Usar EventBus robusto em vez do simples
-        event_bus = EventBus()
-        event_bus.start()  # Iniciar thread de processamento
-        
-        return event_bus
     
     @handle_errors(severity=ErrorSeverity.MEDIUM, category=ErrorCategory.AUDIO, fallback=True)
     def _initialize_audio(self):
@@ -271,14 +178,14 @@ class PitchAIApp(QObject):
     
     def _initialize_ai_services(self):
         """Inicializar serviços de IA."""
-        self.summary_service = SummaryService(self.npu_manager, self.database)
+        self.summary_service = SummaryService(self.onnx_manager, self.database)
         self.logger.info("✅ Serviços de IA inicializados")
-    
+
     def _initialize_call_manager(self):
         """Inicializar gerenciador de chamadas."""
         self.call_manager = CallManager(
-            self.database, 
-            self.npu_manager, 
+            self.database,
+            self.onnx_manager,
             self.summary_service
         )
         self.logger.info("✅ Gerenciador de chamadas inicializado")
@@ -295,7 +202,7 @@ class PitchAIApp(QObject):
             self.audio_capture.audio_ready.connect(
                 self.onnx_manager.process_audio
             )
-            
+
             # ONNX → UI
             self.onnx_manager.transcription_ready.connect(
                 self.transcription_ready
@@ -306,47 +213,8 @@ class PitchAIApp(QObject):
             self.onnx_manager.objection_detected.connect(
                 self.objection_detected
             )
-        
-        # Conectar Mentor Engine se disponível
-        if self.mentor_engine:
-            # Mentor Engine → UI
-            self.mentor_engine.mentor_client_context.connect(
-                self._on_mentor_context
-            )
-            self.mentor_engine.mentor_update.connect(
-                self._on_mentor_update
-            )
-            self.mentor_engine.mentor_coaching.connect(
-                self._on_mentor_coaching
-            )
-            self.mentor_engine.xp_awarded.connect(
-                self._on_xp_awarded
-            )
-            self.mentor_engine.leaderboard_updated.connect(
-                self._on_leaderboard_updated
-            )
-        
+
         self.logger.info("✅ Sinais conectados")
-    
-    def _on_mentor_context(self, context):
-        """Handler para contexto do cliente do Mentor Engine."""
-        self.logger.info(f"🎯 Contexto do cliente: {context.get('tier', 'unknown')}/{context.get('stage', 'unknown')}")
-    
-    def _on_mentor_update(self, update):
-        """Handler para atualizações do Mentor Engine."""
-        self.logger.info(f"💡 Insight do mentor: {update.get('insight', 'N/A')}")
-    
-    def _on_mentor_coaching(self, coaching):
-        """Handler para coaching do Mentor Engine."""
-        self.logger.info(f"🎓 Coaching gerado para call {coaching.get('call_id', 'unknown')}")
-    
-    def _on_xp_awarded(self, xp_event):
-        """Handler para XP concedido."""
-        self.logger.info(f"⭐ XP concedido: +{xp_event.get('xp', 0)} para {xp_event.get('seller_id', 'unknown')}")
-    
-    def _on_leaderboard_updated(self, leaderboard):
-        """Handler para atualização do leaderboard."""
-        self.logger.info(f"🏆 Leaderboard atualizado: {len(leaderboard.get('top', []))} vendedores")
     
     def show(self):
         """Exibir a janela principal."""
@@ -357,37 +225,27 @@ class PitchAIApp(QObject):
         """Iniciar gravação e análise."""
         if not self.is_recording:
             self.logger.info("🎤 Iniciando gravação...")
-            
-            # Iniciar nova chamada
-            self.current_session_id = self.call_manager.start_call()
-            
+
+            # Iniciar nova sessão
+            self.current_session_id = self.database.create_session()
+
             # Iniciar captura de áudio
             if self.audio_capture:
                 self.audio_capture.start()
-            
+
             self.is_recording = True
-            
-            # Simular dados para desenvolvimento
-            if self.config.get('demo_mode', True):
-                self.call_manager.simulate_call_data()
-    
+
     def stop_recording(self):
         """Parar gravação e gerar resumo."""
         if self.is_recording:
             self.logger.info("⏹️ Parando gravação...")
-            
+
             # Parar captura de áudio
             if self.audio_capture:
                 self.audio_capture.stop()
-            
-            # Finalizar chamada e gerar resumo automático
-            if self.call_manager and self.call_manager.is_call_active():
-                summary = self.call_manager.end_call()
-                if summary:
-                    self.logger.info(f"📋 Resumo gerado com {len(summary.key_points)} pontos principais")
-            
+
             self.is_recording = False
-            
+
             # Gerar resumo da sessão
             if self.current_session_id:
                 self._generate_session_summary()
@@ -404,14 +262,9 @@ class PitchAIApp(QObject):
             # Coletar dados da sessão
             session_data = self._collect_session_data()
             
-            # Gerar resumo usando RAG Service se disponível
-            if hasattr(self, 'rag_service') and self.rag_service:
-                summary = self.rag_service.generate_session_summary(session_data)
-                self.logger.info(f"✅ Resumo gerado via RAG Service: {len(summary)} chars")
-            else:
-                # Fallback para resumo simples
-                summary = self._generate_simple_summary(session_data)
-                self.logger.info(f"✅ Resumo simples gerado: {len(summary)} chars")
+            # Gerar resumo simples
+            summary = self._generate_simple_summary(session_data)
+            self.logger.info(f"✅ Resumo simples gerado: {len(summary)} chars")
             
             # Salvar resumo
             self._save_session_summary(summary)
@@ -428,11 +281,8 @@ class PitchAIApp(QObject):
                 # Aqui você coletaria as transcrições da sessão
                 pass
             
-            # Obter objeções detectadas
+            # Objeções serão implementadas posteriormente
             objections = []
-            if hasattr(self, 'mentor_engine') and self.mentor_engine:
-                objections_summary = self.mentor_engine.get_objections_summary(self.current_session_id)
-                objections = objections_summary.get("details", [])
             
             # Obter métricas
             metrics = {
@@ -509,10 +359,13 @@ class PitchAIApp(QObject):
             self.logger.error(f"❌ Erro ao salvar resumo: {e}")
     
     def get_mentor_analytics(self, seller_id: str = "default_seller"):
-        """Obter analytics do Mentor Engine."""
-        if self.mentor_engine:
-            return self.mentor_engine.get_seller_analytics(seller_id)
-        return {}
+        """Obter analytics (implementação futura)."""
+        # Analytics será implementado posteriormente
+        return {
+            "seller_id": seller_id,
+            "status": "not_implemented",
+            "message": "Analytics será implementado em versão futura"
+        }
     
     def shutdown(self):
         """Encerrar aplicação graciosamente."""
@@ -531,14 +384,3 @@ class PitchAIApp(QObject):
             self.database.close()
         
         self.logger.info("✅ PitchAI encerrado")
-
-        print("💾 Persistindo resumo no banco de dados...")
-        # self.database_manager.save_summary(call_id, summary)
-        print(f"📄 Resumo final:\n{summary}")
-
-    def _on_new_transcription(self, text, speaker):
-        """Callback para lidar com novos trechos de transcrição."""
-        self._call_transcript.append({"speaker": speaker, "text": text})
-        # ...lógica para enviar à UI...
-
-    # ...outros callbacks para objeções e métricas...

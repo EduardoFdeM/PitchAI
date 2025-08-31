@@ -7,7 +7,33 @@ usando o LLMService local.
 """
 
 import logging
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
 from PyQt6.QtCore import QObject, pyqtSignal
+
+# Classes básicas
+@dataclass
+class RAGPassage:
+    id: str
+    content: str
+    score: float = 0.0
+
+@dataclass
+class RAGResult:
+    passages: List[RAGPassage]
+    suggestions: List[str]
+
+@dataclass
+class ObjectionEvent:
+    text: str
+    category: str
+    confidence: float = 0.0
+
+# Decorator placeholder para cache (implementação futura)
+def cache_result(ttl=300, priority=8, key_prefix=""):
+    def decorator(func):
+        return func
+    return decorator
 
 class RAGService(QObject):
     """Serviço RAG para detecção de objeções e geração de sugestões."""
