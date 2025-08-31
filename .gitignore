@@ -110,3 +110,6 @@ site/
 local_settings.py
 debug.log
 crash.log
+
+
+llama-3.2-3b-onnx-qnn/

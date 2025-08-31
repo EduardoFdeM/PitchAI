@@ -164,13 +164,21 @@ class TranscriptionService(QObject):
         try:
             # Preferir ModelManager (manifesto + providers padronizados)
             if self.model_manager:
-                # Tentar carregar whisper_small primeiro, fallback para tiny
-                self.session = self.model_manager.get_session("whisper_small_encoder")
+                # Estratégia: Whisper Large primeiro (melhor qualidade), depois Small, depois Tiny
+                self.logger.info("🔄 Tentando carregar Whisper Large (melhor qualidade)...")
+                self.session = self.model_manager.get_session("whisper_large_encoder")
+
+                if not self.session:
+                    self.logger.warning("⚠️ Whisper Large não disponível, tentando Small...")
+                    self.session = self.model_manager.get_session("whisper_small_encoder")
+
                 if not self.session:
                     self.logger.warning("⚠️ Whisper Small não disponível, tentando Tiny...")
                     self.session = self.model_manager.get_session("whisper_tiny_encoder")
+
                 if not self.session:
                     raise RuntimeError("Nenhum modelo Whisper disponível no ModelManager")
+
                 self.logger.info("✅ Modelo Whisper carregado via ModelManager")
             else:
                 # Fallback para carregamento manual

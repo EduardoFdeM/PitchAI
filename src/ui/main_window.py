@@ -20,9 +20,11 @@ from .analysis_widget import AnalysisWidget
 from .chat_widget import ChatWidget
 from .summary_widget import SummaryWidget
 from .menu_widget import MenuWidget
-from .transcription_full_widget import TranscriptionFullWidget
+# TranscriptionFullWidget removido - funcionalidade integrada no TranscriptionWidget
+from .transcription_widget import TranscriptionWidget
 from .settings_widget import SettingsWidget
 from .history_widget import HistoryWidget
+from .integration_controller import IntegrationController
  
 
 class FloatingIcon(QWidget):
@@ -117,6 +119,10 @@ class MainWindow(QMainWindow):
         self.app_instance = pitch_app  # Para compatibilidade
         self.is_minimized = False
         self.floating_icon = None
+
+        # Inicializar controlador de integração
+        self.integration_controller = IntegrationController(config)
+        self.integration_controller.initialize()
         
         # Configurar janela
         self.setWindowTitle("PitchAI - Copiloto de Vendas")
@@ -219,26 +225,53 @@ class MainWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         self.stacked_widget.setObjectName("mainStackedWidget")
         
-        # Adicionar widgets
+        # Criar widgets
         self.start_widget = StartWidget()
         self.dashboard_widget = DashboardWidget(self.config, self.app_instance)
         self.analysis_widget = AnalysisWidget(self.config, self.app_instance)
         self.chat_widget = ChatWidget()
-        self.transcription_full_widget = TranscriptionFullWidget()
         self.settings_widget = SettingsWidget()
         self.history_widget = HistoryWidget()
         self.summary_widget = SummaryWidget()
-        
+
+        # Conectar widgets ao controlador de integração
+        if hasattr(self.analysis_widget, 'transcription_widget'):
+            transcription_widget = self.analysis_widget.transcription_widget
+
+            # Garantir que o transcription_service seja passado corretamente
+            if self.integration_controller and self.integration_controller.transcription_service:
+                transcription_widget.transcription_service = self.integration_controller.transcription_service
+                transcription_widget.database_manager = self.integration_controller.database_manager
+
+                # Conectar sinais do transcription_widget para o integration_controller
+                self.integration_controller.connect_transcription_widget(transcription_widget)
+
+                # Conectar sinal de tela cheia
+                transcription_widget.fullscreen_requested.connect(self._open_transcription_full)
+
+                self.logger.info("✅ Transcription widget conectado ao Integration Controller")
+            else:
+                self.logger.warning("⚠️ Integration Controller não tem transcription_service")
+
+        # Conectar summary_widget se disponível
+        if self.summary_widget and self.integration_controller and self.integration_controller.summary_service:
+            # Conectar o summary_widget para receber resumos gerados
+            self.integration_controller.summary_generated.connect(
+                lambda summary: self.summary_widget.update_summary(summary)
+            )
+            print("✅ SummaryWidget conectado ao Integration Controller")
+
         self.stacked_widget.addWidget(self.start_widget)
         self.stacked_widget.addWidget(self.dashboard_widget)
         self.stacked_widget.addWidget(self.analysis_widget)
         self.stacked_widget.addWidget(self.chat_widget)
-        self.stacked_widget.addWidget(self.transcription_full_widget)
         self.stacked_widget.addWidget(self.settings_widget)
         self.stacked_widget.addWidget(self.history_widget)
         self.stacked_widget.addWidget(self.summary_widget)
-        
+
         container_layout.addWidget(self.stacked_widget)
+
+
         
         # ===== MENU WIDGET =====
         self.menu_widget = MenuWidget(self)
@@ -368,8 +401,7 @@ class MainWindow(QMainWindow):
         # Conectar navegação do ChatWidget
         self.chat_widget.back_to_analysis_requested.connect(self._go_to_analysis)
         
-        # Conectar navegação do TranscriptionFullWidget
-        self.transcription_full_widget.back_to_analysis_requested.connect(self._go_to_analysis)
+        # TranscriptionFullWidget removido - funcionalidade integrada no TranscriptionWidget
         
         # Conectar navegação do SettingsWidget
         self.settings_widget.back_to_dashboard_requested.connect(self._go_to_dashboard)
@@ -377,6 +409,12 @@ class MainWindow(QMainWindow):
         # Conectar navegação do HistoryWidget
         self.history_widget.back_to_dashboard_requested.connect(self._go_to_dashboard)
         self.history_widget.history_item_clicked.connect(self._open_history_item)
+
+        # Conectar sinais do Integration Controller
+        self.integration_controller.transcription_updated.connect(self._on_transcription_updated)
+        self.integration_controller.sentiment_updated.connect(self._on_sentiment_updated)
+        self.integration_controller.audio_capture_status.connect(self._on_audio_capture_status)
+        self.integration_controller.error_occurred.connect(self._on_integration_error)
         
         # Conectar navegação do SummaryWidget
         self.summary_widget.back_to_start_requested.connect(self._go_to_dashboard)
@@ -437,9 +475,10 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(3)
     
     def _open_transcription_full(self, transcription_text):
-        """Abrir tela de transcrição completa."""
-        self.transcription_full_widget.update_transcription(transcription_text)
-        self.stacked_widget.setCurrentIndex(4)
+        """Abrir tela de transcrição completa (integrada no TranscriptionWidget)."""
+        # A funcionalidade agora está integrada no TranscriptionWidget
+        # O sinal fullscreen_requested será emitido e tratado pelo widget
+        pass
     
     def _open_history_item(self, session_id: str):
         """Abrir item do histórico."""
@@ -486,3 +525,56 @@ class MainWindow(QMainWindow):
         if current_index == 1:
             self.dashboard_widget.show_menu_button()
         self.close()
+
+    # Callbacks do Integration Controller
+    def _on_transcription_updated(self, chunk):
+        """Receber atualização de transcrição."""
+        try:
+            # Encaminhar para o widget de transcrição se estiver visível
+            if hasattr(self.analysis_widget, 'transcription_widget'):
+                self.analysis_widget.transcription_widget._on_transcript_chunk(chunk)
+        except Exception as e:
+            print(f"Erro ao atualizar transcrição: {e}")
+
+    def _on_sentiment_updated(self, sentiment_data):
+        """Receber atualização de sentimento."""
+        try:
+            # Encaminhar para o dashboard de análise se estiver visível
+            if hasattr(self.analysis_widget, 'update_sentiment'):
+                self.analysis_widget.update_sentiment(sentiment_data)
+        except Exception as e:
+            print(f"Erro ao atualizar sentimento: {e}")
+
+    def _on_audio_capture_status(self, is_capturing):
+        """Receber status da captura de áudio."""
+        try:
+            # Atualizar indicadores visuais
+            if hasattr(self.analysis_widget, 'update_capture_status'):
+                self.analysis_widget.update_capture_status(is_capturing)
+        except Exception as e:
+            print(f"Erro ao atualizar status de captura: {e}")
+
+    def _on_integration_error(self, error_msg):
+        """Receber erro do controlador de integração."""
+        try:
+            # Mostrar erro na UI
+            print(f"Erro de integração: {error_msg}")
+            # TODO: Implementar notificação visual de erro
+        except Exception as e:
+            print(f"Erro ao processar erro de integração: {e}")
+
+    def start_capture_integration(self):
+        """Iniciar captura através do controlador de integração."""
+        try:
+            return self.integration_controller.start_capture()
+        except Exception as e:
+            print(f"Erro ao iniciar captura: {e}")
+            return False
+
+    def stop_capture_integration(self):
+        """Parar captura através do controlador de integração."""
+        try:
+            return self.integration_controller.stop_capture()
+        except Exception as e:
+            print(f"Erro ao parar captura: {e}")
+            return False

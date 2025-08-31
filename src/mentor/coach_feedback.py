@@ -370,7 +370,7 @@ class CoachFeedback:
                     self.logger.warning(f"⚠️ Erro ao buscar histórico: {e}")
             
             # Criar passagens para o RAG
-            from ai.anythingllm_client import RAGPassage
+            from ai.rag_service import RAGPassage
             
             # Passagens baseadas no contexto da call
             passages = [

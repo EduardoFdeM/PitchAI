@@ -14,8 +14,28 @@ from PIL import Image
 import time
 
 from .models import Face, Expression, SentimentConfig
-from ...core.event_bus import publish_event
-from ...core.contracts import EventType, create_error
+
+# Import com fallback para evitar problemas de import relativo
+try:
+    from ...core.event_bus import publish_event
+    from ...core.contracts import EventType, create_error
+except ImportError:
+    try:
+        from core.event_bus import publish_event
+        from core.contracts import EventType, create_error
+    except ImportError:
+        # Fallback para evitar erro
+        def publish_event(*args, **kwargs):
+            pass
+        EventType = type('EventType', (), {'ERROR': 'error'})()
+        def create_error(*args, **kwargs):
+            return {"type": "error", "message": "Event system not available"}
+
+try:
+    from PyQt6.QtCore import pyqtSignal
+except ImportError:
+    # Fallback para compatibilidade
+    pyqtSignal = lambda *args, **kwargs: None
 
 
 class VisionAnalyzer:
@@ -24,16 +44,17 @@ class VisionAnalyzer:
     analysis_ready = pyqtSignal(dict)
     error_occurred = pyqtSignal(str)
     
-    def __init__(self, config: SentimentConfig = None, opt_in: bool = False):
+    def __init__(self, config: SentimentConfig = None, opt_in: bool = False, llm_service=None):
         super().__init__()
         self.config = config or SentimentConfig()
         self.is_enabled_flag = opt_in
+        self.llm_service = llm_service
         self.logger = logging.getLogger(__name__)
-        
+
         # TODO: Adicionar inicialização de modelos de visão ONNX
         self.face_detector = None
         self.expression_classifier = None
-        
+
         self.frame_count = 0
         self.last_analysis_time = 0
 
@@ -42,13 +63,13 @@ class VisionAnalyzer:
         return self.is_enabled_flag
 
     def classify_expressions(self, faces: List[Face]) -> List[Expression]:
-        """Classificar expressões faciais usando AnythingLLM."""
+        """Classificar expressões faciais usando LLM Service local."""
         if not self.is_enabled_flag or not faces:
             return []
-        
+
         try:
-            if self.anythingllm_client:
-                return self._classify_with_anythingllm(faces)
+            if self.llm_service and hasattr(self.llm_service, 'generate_response'):
+                return self._classify_with_llm_service(faces)
             else:
                 return self._simulate_expressions(faces)
                 
@@ -56,8 +77,8 @@ class VisionAnalyzer:
             self.logger.error(f"Erro na classificação de expressões: {e}")
             return []
     
-    def _classify_with_anythingllm(self, faces: List[Face]) -> List[Expression]:
-        """Classificar expressões usando AnythingLLM."""
+    def _classify_with_llm_service(self, faces: List[Face]) -> List[Expression]:
+        """Classificar expressões usando LLM Service local."""
         try:
             expressions = []
             
@@ -82,32 +103,22 @@ class VisionAnalyzer:
                 
                 user_prompt = f"{face_desc}\n\nExpressão (formato: expressão,confiança,intensidade):"
                 
-                # Configurar payload
-                payload = {
-                    "model": self.anythingllm_client.default_model,
-                    "temperature": 0.1,
-                    "stream": False,
-                    "max_tokens": 20,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                }
-                
-                # Fazer requisição
-                response = self.anythingllm_client._make_request(payload, stream=False)
-                
-                if response.status_code != 200:
-                    self.logger.warning(f"Erro na API AnythingLLM: {response.status_code}")
-                    # Publicar erro no EventBus
-                    error_event = create_error("rag", "anythingllm_api_error", 
-                                             f"Erro na API AnythingLLM: {response.status_code}")
-                    publish_event(EventType.ERROR.value, error_event.to_dict())
+                # Criar prompt completo
+                full_prompt = f"{system_prompt}\n\n{user_prompt}"
+
+                # Usar LLM Service local
+                response_text = self.llm_service.generate_response(
+                    full_prompt,
+                    max_tokens=20,
+                    include_history=False
+                )
+
+                if not response_text or response_text.startswith("❌"):
+                    self.logger.warning(f"Erro no LLM Service: {response_text}")
                     continue
                 
                 # Processar resposta
-                data = response.json()
-                content = data['choices'][0]['message']['content'].strip()
+                content = response_text.strip()
                 
                 # Parsear resposta
                 try:

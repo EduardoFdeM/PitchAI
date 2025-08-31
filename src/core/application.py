@@ -178,8 +178,18 @@ class PitchAIApp(QObject):
     
     def _initialize_ai_services(self):
         """Inicializar serviços de IA."""
-        self.summary_service = SummaryService(self.onnx_manager, self.database)
-        self.logger.info("✅ Serviços de IA inicializados")
+        # Inicializar LLM Service com AnythingLLM
+        from ai.llm_service import LLMService
+        self.llm_service = LLMService(
+            model_dir=self.config.app_dir / "models",
+            use_simulation=False,
+            use_anythingllm=True
+        )
+        self.llm_service.initialize()
+
+        # Inicializar Summary Service com LLM Service
+        self.summary_service = SummaryService(self.config, self.llm_service, self.database)
+        self.logger.info("✅ Serviços de IA inicializados (com AnythingLLM)")
 
     def _initialize_call_manager(self):
         """Inicializar gerenciador de chamadas."""

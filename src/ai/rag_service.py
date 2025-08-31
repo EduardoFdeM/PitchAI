@@ -7,6 +7,7 @@ usando o LLMService local.
 """
 
 import logging
+import json
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -37,9 +38,10 @@ def cache_result(ttl=300, priority=8, key_prefix=""):
 
 class RAGService(QObject):
     """Serviço RAG para detecção de objeções e geração de sugestões."""
-    
+
     suggestions_ready = pyqtSignal(object)
     rag_error = pyqtSignal(str)
+    llm_status_changed = pyqtSignal(bool)
     
     def __init__(self, config, llm_service):
         super().__init__()
@@ -54,14 +56,18 @@ class RAGService(QObject):
         self._init_cache()
     
     def _check_availability(self):
-        """Verificar disponibilidade do AnythingLLM."""
-        self.is_available = self.anythingllm_client.health_check()
-        self.llm_status_changed.emit(self.is_available)
-        
-        if self.is_available:
-            self.logger.info("✅ AnythingLLM disponível para RAG")
+        """Verificar disponibilidade do LLM Service local."""
+        if self.llm_service and hasattr(self.llm_service, 'is_initialized'):
+            self.is_available = self.llm_service.is_initialized
         else:
-            self.logger.warning("⚠️ AnythingLLM não disponível - usando fallback")
+            self.is_available = False
+
+        self.llm_status_changed.emit(self.is_available)
+
+        if self.is_available:
+            self.logger.info("✅ LLM Service local disponível para RAG")
+        else:
+            self.logger.warning("⚠️ LLM Service não disponível - usando fallback")
     
     def _init_knowledge_base(self):
         """Inicializar base de conhecimento real."""
@@ -342,16 +348,44 @@ class RAGService(QObject):
             Resumo estruturado
         """
         if not self.is_available:
-            return "AnythingLLM não disponível para geração de resumo."
-        
+            return "LLM Service não disponível para geração de resumo."
+
         try:
-            return self.anythingllm_client.generate_session_summary(
-                session_data, stream_callback
+            # Formatar dados da sessão para o LLM local
+            summary_prompt = self._format_summary_prompt(session_data)
+
+            return self.llm_service.generate_response(
+                summary_prompt,
+                max_tokens=500,
+                include_history=False
             )
         except Exception as e:
             self.logger.error(f"Erro ao gerar resumo: {e}")
             return "Erro ao gerar resumo da sessão."
     
+    def _format_summary_prompt(self, session_data: Dict[str, Any]) -> str:
+        """Formatar dados da sessão em prompt para o LLM."""
+        prompt = "Por favor, gere um resumo estruturado da seguinte sessão de vendas:\n\n"
+
+        if 'transcript' in session_data:
+            prompt += f"Transcrição da conversa:\n{session_data['transcript']}\n\n"
+
+        if 'objections' in session_data:
+            prompt += f"Objeções detectadas:\n{session_data['objections']}\n\n"
+
+        if 'sentiment' in session_data:
+            prompt += f"Análise de sentimento: {session_data['sentiment']}\n\n"
+
+        prompt += """Por favor, forneça um resumo estruturado incluindo:
+1. Pontos principais da conversa
+2. Objeções tratadas
+3. Próximos passos recomendados
+4. KPIs da reunião (tempo de fala, engajamento, etc.)
+
+Formate o resultado como JSON estruturado."""
+
+        return prompt
+
     def health_check(self) -> bool:
         """Verificar saúde do serviço RAG."""
         return self.is_available

@@ -17,12 +17,29 @@ from pathlib import Path
 
 # Adicionar src ao path
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # Para imports absolutos
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QCoreApplication, QObject, pyqtSignal, QTimer
-from ui.main_window import MainWindow
-from core.config import create_config
-from core.application import PitchAIApp
+
+# Tentar imports com fallback
+try:
+    # Tentativa 1: Import relativo (quando executado como módulo)
+    from ui.main_window import MainWindow
+    from core.config import create_config
+    from core.application import PitchAIApp
+except ImportError:
+    try:
+        # Tentativa 2: Import absoluto (quando executado como script)
+        from src.ui.main_window import MainWindow
+        from src.core.config import create_config
+        from src.core.application import PitchAIApp
+    except ImportError:
+        # Tentativa 3: Import direto (último recurso)
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from src.ui.main_window import MainWindow
+        from src.core.config import create_config
+        from src.core.application import PitchAIApp
 
 
 class IntegratedPitchAI(QObject):
@@ -75,16 +92,45 @@ class IntegratedPitchAI(QObject):
         """Conectar sinais do backend para a UI."""
         if not self.pitch_app or not self.main_window:
             return
-        
-        # Conectar sinais de transcrição
-        self.pitch_app.transcription_ready.connect(self._on_transcription_ready)
-        
-        # Conectar sinais de sentimento
-        self.pitch_app.sentiment_updated.connect(self._on_sentiment_updated)
-        
-        # Conectar sinais de objeções
-        self.pitch_app.objection_detected.connect(self._on_objection_detected)
-        
+
+        # Usar o IntegrationController se disponível
+        if hasattr(self.main_window, 'integration_controller') and self.main_window.integration_controller:
+            integration_controller = self.main_window.integration_controller
+
+            # Conectar sinais do IntegrationController para os widgets
+            if hasattr(self.main_window, 'analysis_widget') and self.main_window.analysis_widget:
+                analysis_widget = self.main_window.analysis_widget
+
+                # Conectar transcrição
+                integration_controller.transcription_updated.connect(
+                    lambda chunk: self._on_transcript_chunk(chunk, analysis_widget)
+                )
+
+                # Conectar sentimento
+                integration_controller.sentiment_updated.connect(
+                    lambda sentiment: self._on_sentiment_updated(sentiment, analysis_widget)
+                )
+
+                # Conectar resumo
+                integration_controller.summary_generated.connect(
+                    lambda summary: self._on_summary_generated(summary, analysis_widget)
+                )
+
+                # Conectar erros
+                integration_controller.error_occurred.connect(
+                    lambda error: self._on_error_occurred(error, analysis_widget)
+                )
+
+                print("🔗 Sinais do IntegrationController conectados aos widgets")
+
+        # Conectar sinais diretos do pitch_app (fallback)
+        try:
+            self.pitch_app.transcription_ready.connect(self._on_transcription_ready)
+            self.pitch_app.sentiment_updated.connect(self._on_sentiment_updated)
+            self.pitch_app.objection_detected.connect(self._on_objection_detected)
+        except AttributeError:
+            pass  # Sinais podem não existir
+
         print("🔗 Sinais do backend conectados à UI")
     
     def _on_transcription_ready(self, text: str, speaker_id: str):
@@ -104,6 +150,21 @@ class IntegratedPitchAI(QObject):
         if self.main_window and hasattr(self.main_window, 'analysis_widget'):
             # Adicionar objeção na UI
             self.main_window.analysis_widget.add_objection(objection, suggestions)
+
+    def _on_transcript_chunk(self, chunk, analysis_widget):
+        """Handler para chunk de transcrição."""
+        if analysis_widget and hasattr(analysis_widget, 'transcription_widget'):
+            analysis_widget.transcription_widget.add_transcription_chunk(chunk)
+
+    def _on_summary_generated(self, summary, analysis_widget):
+        """Handler para resumo gerado."""
+        if analysis_widget and hasattr(analysis_widget, 'transcription_widget'):
+            analysis_widget.transcription_widget.set_summary_result(summary)
+
+    def _on_error_occurred(self, error, analysis_widget):
+        """Handler para erros."""
+        if analysis_widget and hasattr(analysis_widget, 'status_label'):
+            analysis_widget.status_label.setText(f"❌ Erro: {error}")
     
     def show(self):
         """Mostrar interface."""
