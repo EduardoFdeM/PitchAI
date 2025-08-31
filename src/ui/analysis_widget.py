@@ -30,10 +30,10 @@ class SentimentGraph(QWidget):
         self.setObjectName("sentimentGraph")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        # Dados do gráfico
-        self.data_points = [random.randint(80, 120) for _ in range(30)]
-        self.positive_data = [random.randint(90, 140) for _ in range(30)]
-        self.negative_data = [random.randint(0, 40) for _ in range(30)]
+        # Dados do gráfico - inicialmente vazios
+        self.data_points = []
+        self.positive_data = []
+        self.negative_data = []
         
         # Estado de visibilidade
         self.is_visible = False
@@ -69,10 +69,15 @@ class SentimentGraph(QWidget):
     
     def update_sentiment(self, value):
         """Atualizar valor de sentimento."""
-        # Adicionar novos pontos
+        # Adicionar novos pontos reais
         self.data_points.append(value)
-        self.positive_data.append(random.randint(90, 140))
-        self.negative_data.append(random.randint(0, 40))
+        
+        # Calcular dados positivos e negativos baseados no valor real
+        positive_value = max(0, value + random.randint(-10, 10))
+        negative_value = max(0, 100 - value + random.randint(-10, 10))
+        
+        self.positive_data.append(positive_value)
+        self.negative_data.append(negative_value)
         
         # Manter apenas os últimos 30 pontos
         if len(self.data_points) > 30:
@@ -225,6 +230,7 @@ class AnalysisWidget(QWidget):
     opportunity_chat_requested = pyqtSignal(dict)  # Emite dados de oportunidade
     objection_chat_requested = pyqtSignal(dict)  # Emite dados de objeção
     transcription_full_requested = pyqtSignal(str)  # Emite texto da transcrição
+    transcription_update_requested = pyqtSignal(str, str)  # Emite texto e speaker_id para atualização em tempo real
     back_to_dashboard_requested = pyqtSignal()
     
     def __init__(self, config, app_instance, parent=None):
@@ -283,6 +289,12 @@ class AnalysisWidget(QWidget):
         detections_layout.setContentsMargins(20, 20, 20, 20)
         detections_layout.setSpacing(15)
         
+        # Título das detecções
+        insight_title = QLabel("Insight")
+        insight_title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        
+        detections_layout.addWidget(insight_title)
+        
         # Área scrollável para detecções
         self.detections_scroll = QScrollArea()
         self.detections_scroll.setWidgetResizable(True)
@@ -324,7 +336,7 @@ class AnalysisWidget(QWidget):
         transcription_layout.setSpacing(15)
         
         # Título da transcrição
-        transcription_title = QLabel("👤 Transcription Feed")
+        transcription_title = QLabel("Transcription Feed")
         transcription_title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
         
         transcription_layout.addWidget(transcription_title)
@@ -355,7 +367,7 @@ class AnalysisWidget(QWidget):
         # Header do sentimento
         sentiment_header = QHBoxLayout()
         
-        sentiment_title = QLabel("📊 Sentiment Analysis")
+        sentiment_title = QLabel("Sentiment Analysis")
         sentiment_title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
         
         sentiment_header.addWidget(sentiment_title)
@@ -426,6 +438,11 @@ class AnalysisWidget(QWidget):
             # A simulação continua rodando em background
             # Não parar a gravação quando abrir a transcrição
     
+    def add_transcription_to_full_screen(self, text, speaker_id="vendor"):
+        """Adicionar transcrição à tela completa em tempo real."""
+        # Emitir sinal para atualizar a tela de transcrição completa
+        self.transcription_update_requested.emit(text, speaker_id)
+    
     def _toggle_recording(self):
         """Alternar estado de gravação."""
         self.is_recording = not self.is_recording
@@ -483,7 +500,12 @@ class AnalysisWidget(QWidget):
         
         # Adicionar nova transcrição
         sample = self.transcript_samples[self.current_sample]
-        self.transcription_area.append(f"🟢 {sample}")
+        self.transcription_area.append(sample)
+        
+        # Emitir sinal para atualizar a tela de transcrição completa em tempo real
+        speaker_id = "vendor" if self.current_sample % 2 == 0 else "client"
+        self.transcription_update_requested.emit(sample, speaker_id)
+        
         self.current_sample = (self.current_sample + 1) % len(self.transcript_samples)
         
         # Atualizar sentimento

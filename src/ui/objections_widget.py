@@ -21,7 +21,7 @@ class ObjectionsWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
         
-        title_label = QLabel("🛡️ Objeções")
+        title_label = QLabel("Objeções")
         font = QFont()
         font.setPointSize(14)
         font.setWeight(QFont.Weight.Bold)

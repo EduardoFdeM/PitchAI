@@ -44,8 +44,8 @@ class Config:
     sentiment_threshold: float = 0.6
     
     # ===== UI =====
-    window_width: int = 480
-    window_height: int = 853  # 9:16 ratio
+    window_width: int = 390  # iPhone 12/13/14 width
+    window_height: int = 844  # iPhone 12/13/14 height (19.5:9 ratio)
     theme: str = "glassmorphism"
     
     def __post_init__(self):
@@ -95,7 +95,7 @@ def create_config(app_dir: Optional[Path] = None) -> Config:
         sentiment_threshold=0.6,
         
         # Configurações UI
-        window_width=480,
-        window_height=853,
+        window_width=390,
+        window_height=844,
         theme="glassmorphism"
     )

@@ -36,7 +36,7 @@ class FloatingIcon(QWidget):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(60, 60)
+        self.setFixedSize(50, 50)  # Ícone menor para iPhone
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -45,10 +45,14 @@ class FloatingIcon(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        # Botão do ícone
+        # Botão do ícone (sem capturar eventos de mouse)
         self.icon_button = QPushButton("P")
         self.icon_button.setObjectName("floatingIconButton")
-        self.icon_button.clicked.connect(self.restore_requested.emit)
+        # Remover conexão de clique - será tratado no mouseReleaseEvent
+        # self.icon_button.clicked.connect(self.restore_requested.emit)
+        # Desabilitar captura de eventos de mouse pelo botão
+        self.icon_button.setMouseTracking(False)
+        self.icon_button.installEventFilter(self)
         layout.addWidget(self.icon_button)
         
         self._apply_styles()
@@ -80,26 +84,54 @@ class FloatingIcon(QWidget):
         """Configurar arrastar o ícone."""
         self.dragging = False
         self.drag_position = QPoint()
+        self.press_position = QPoint()
+        self.drag_threshold = 5  # pixels para considerar como arrastar vs clique
     
     def mousePressEvent(self, event):
         """Detectar clique para arrastar."""
         if event.button() == Qt.MouseButton.LeftButton:
-            self.dragging = True
+            self.dragging = False  # Reset no início
             self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self.press_position = event.globalPosition().toPoint()
             event.accept()
+        else:
+            super().mousePressEvent(event)
     
     def mouseMoveEvent(self, event):
         """Arrastar o ícone."""
-        if event.buttons() == Qt.MouseButton.LeftButton and self.dragging:
-            new_pos = event.globalPosition().toPoint() - self.drag_position
-            self.move(new_pos)
-            event.accept()
+        if event.buttons() == Qt.MouseButton.LeftButton:
+            current_pos = event.globalPosition().toPoint()
+            distance = (current_pos - self.press_position).manhattanLength()
+            
+            # Se moveu mais que o threshold, considera como arrastar
+            if distance > self.drag_threshold:
+                self.dragging = True
+            
+            if self.dragging:
+                new_pos = current_pos - self.drag_position
+                # Garantir que o ícone não saia da tela
+                screen = self.screen()
+                screen_geometry = screen.geometry()
+                
+                # Limitar posição dentro da tela
+                new_x = max(0, min(new_pos.x(), screen_geometry.width() - self.width()))
+                new_y = max(0, min(new_pos.y(), screen_geometry.height() - self.height()))
+                
+                self.move(new_x, new_y)
+                event.accept()
+        else:
+            super().mouseMoveEvent(event)
     
     def mouseReleaseEvent(self, event):
-        """Parar de arrastar."""
+        """Parar de arrastar ou restaurar janela."""
         if event.button() == Qt.MouseButton.LeftButton:
+            if not self.dragging:
+                # Se não arrastou, restaurar janela
+                self.restore_requested.emit()
             self.dragging = False
             event.accept()
+        else:
+            super().mouseReleaseEvent(event)
     
     def enterEvent(self, event):
         """Mouse entrou no ícone."""
@@ -108,6 +140,14 @@ class FloatingIcon(QWidget):
     def leaveEvent(self, event):
         """Mouse saiu do ícone."""
         self.setCursor(Qt.CursorShape.ArrowCursor)
+    
+    def eventFilter(self, obj, event):
+        """Filtrar eventos do botão para permitir arrastar o ícone."""
+        if obj == self.icon_button:
+            # Permitir que todos os eventos de mouse sejam processados pelo widget pai
+            if event.type() in [event.Type.MouseButtonPress, event.Type.MouseMove, event.Type.MouseButtonRelease]:
+                return False  # Não interceptar, deixar o widget pai processar
+        return super().eventFilter(obj, event)
 
 class MainWindow(QMainWindow):
     """Janela principal da aplicação."""
@@ -126,7 +166,7 @@ class MainWindow(QMainWindow):
         
         # Configurar janela
         self.setWindowTitle("PitchAI - Copiloto de Vendas")
-        self.setFixedSize(1000, 700)
+        self.setFixedSize(self.config.window_width, self.config.window_height)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
@@ -176,17 +216,17 @@ class MainWindow(QMainWindow):
         # ===== TITLE BAR =====
         title_bar = QFrame()
         title_bar.setObjectName("titleBar")
-        title_bar.setFixedHeight(40)
+        title_bar.setFixedHeight(35)  # Barra mais compacta para iPhone
         
         title_layout = QHBoxLayout(title_bar)
-        title_layout.setContentsMargins(15, 0, 15, 0)
-        title_layout.setSpacing(10)
+        title_layout.setContentsMargins(12, 0, 12, 0)  # Margens menores para iPhone
+        title_layout.setSpacing(8)  # Espaçamento menor
         
         # Título
         title_label = QLabel("PitchAI")
         title_label.setObjectName("titleLabel")
         title_font = QFont()
-        title_font.setPointSize(14)
+        title_font.setPointSize(13)  # Fonte menor para iPhone
         title_font.setWeight(QFont.Weight.Bold)
         title_label.setFont(title_font)
         
@@ -211,7 +251,7 @@ class MainWindow(QMainWindow):
         # Botão minimizar
         minimize_btn = QPushButton("−")
         minimize_btn.setObjectName("windowControlBtn")
-        minimize_btn.setFixedSize(30, 30)
+        minimize_btn.setFixedSize(26, 26)  # Botão menor para iPhone
         minimize_btn.setToolTip("Minimizar para ícone flutuante")
         minimize_btn.clicked.connect(self._minimize_to_icon)
         
@@ -230,7 +270,8 @@ class MainWindow(QMainWindow):
         self.dashboard_widget = DashboardWidget(self.config, self.app_instance)
         self.analysis_widget = AnalysisWidget(self.config, self.app_instance)
         self.chat_widget = ChatWidget()
-        self.settings_widget = SettingsWidget()
+        self.transcription_full_widget = TranscriptionFullWidget()
+        self.settings_widget = SettingsWidget(self.app_instance)
         self.history_widget = HistoryWidget()
         self.summary_widget = SummaryWidget()
 
@@ -276,7 +317,9 @@ class MainWindow(QMainWindow):
         # ===== MENU WIDGET =====
         self.menu_widget = MenuWidget(self)
         self.menu_widget.hide()
-        self.menu_widget.move(80, 30)
+        # Posicionamento responsivo baseado no tamanho da janela
+        menu_x = min(80, self.config.window_width - 120)
+        self.menu_widget.move(menu_x, 30)
         
         # Adicionar apenas o container principal ao layout
         main_layout.addWidget(self.main_container)
@@ -287,21 +330,63 @@ class MainWindow(QMainWindow):
         """Configurar arrastar a janela."""
         self.dragging = False
         self.drag_position = QPoint()
+        
+        # Configurar a barra de título para ser arrastável
+        self.title_bar = self.findChild(QFrame, "titleBar")
+        if self.title_bar:
+            self.title_bar.mousePressEvent = self._title_bar_mouse_press
+            self.title_bar.mouseMoveEvent = self._title_bar_mouse_move
+            self.title_bar.mouseReleaseEvent = self._title_bar_mouse_release
+            # Configurar cursor de arrastar na barra de título
+            self.title_bar.setCursor(Qt.CursorShape.SizeAllCursor)
+    
+    def _title_bar_mouse_press(self, event):
+        """Detectar clique na barra de título para arrastar janela."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = True
+            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def _title_bar_mouse_move(self, event):
+        """Arrastar a janela quando mouse move na barra de título."""
+        if event.buttons() == Qt.MouseButton.LeftButton and self.dragging:
+            new_pos = event.globalPosition().toPoint() - self.drag_position
+            self.move(new_pos)
+            event.accept()
+    
+    def _title_bar_mouse_release(self, event):
+        """Parar de arrastar quando mouse solta na barra de título."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = False
+            event.accept()
     
     def mousePressEvent(self, event):
-        """Detectar clique para arrastar janela."""
-        # Verificar se o clique foi na borda (10px de margem)
-        if (event.position().x() <= 10 or event.position().x() >= self.width() - 10 or
-            event.position().y() <= 10 or event.position().y() >= self.height() - 10):
-            if event.button() == Qt.MouseButton.LeftButton:
-                self.dragging = True
-                self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-                event.accept()
+        """Detectar clique para arrastar janela de qualquer lugar."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Permitir arrastar de qualquer lugar da janela
+            self.dragging = True
+            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
     
     def mouseMoveEvent(self, event):
-        """Arrastar a janela."""
+        """Arrastar a janela de qualquer lugar."""
         if event.buttons() == Qt.MouseButton.LeftButton and self.dragging:
-            self.move(event.globalPosition().toPoint() - self.drag_position)
+            new_pos = event.globalPosition().toPoint() - self.drag_position
+            
+            # Garantir que a janela não saia completamente da tela
+            screen = self.screen()
+            screen_geometry = screen.geometry()
+            
+            # Permitir que parte da janela saia da tela, mas não completamente
+            min_x = -self.width() + 100  # Deixar pelo menos 100px visível
+            min_y = -self.height() + 100
+            max_x = screen_geometry.width() - 100
+            max_y = screen_geometry.height() - 100
+            
+            new_x = max(min_x, min(new_pos.x(), max_x))
+            new_y = max(min_y, min(new_pos.y(), max_y))
+            
+            self.move(new_x, new_y)
             event.accept()
     
     def mouseReleaseEvent(self, event):
@@ -318,10 +403,24 @@ class MainWindow(QMainWindow):
             self.floating_icon.restore_requested.connect(self._restore_from_icon)
             
             # Posicionar ícone próximo à posição da janela
-            icon_pos = self.mapToGlobal(QPoint(0, 0))
-            self.floating_icon.move(icon_pos.x(), icon_pos.y())
+            # Usar a posição atual da janela como referência
+            window_pos = self.pos()
+            screen = self.screen()
+            screen_geometry = screen.geometry()
+            
+            # Posicionar o ícone no canto inferior direito da tela
+            # ou próximo à posição da janela se estiver visível
+            icon_x = min(window_pos.x() + 50, screen_geometry.width() - 80)
+            icon_y = min(window_pos.y() + 50, screen_geometry.height() - 80)
+            
+            # Garantir que o ícone não saia da tela
+            icon_x = max(20, min(icon_x, screen_geometry.width() - 70))
+            icon_y = max(20, min(icon_y, screen_geometry.height() - 70))
+            
+            self.floating_icon.move(icon_x, icon_y)
             self.floating_icon.show()
             self.floating_icon.raise_()
+            self.floating_icon.activateWindow()
             
             # Ocultar janela principal
             self.hide()
@@ -355,10 +454,14 @@ class MainWindow(QMainWindow):
         event.accept()
     
     def _load_styles(self):
-        """Carregar estilos glassmorphism."""
+        """Carregar estilos responsivos para iPhone."""
         try:
-            # Tentar diferentes caminhos para o arquivo de estilos
+            # Tentar diferentes caminhos para o arquivo de estilos responsivos
             possible_paths = [
+                self.config.app_dir / "src" / "ui" / "styles" / "responsive.qss",
+                Path(__file__).parent / "styles" / "responsive.qss",
+                Path.cwd() / "src" / "ui" / "styles" / "responsive.qss",
+                # Fallback para glassmorphism se responsive não existir
                 self.config.app_dir / "src" / "ui" / "styles" / "glassmorphism.qss",
                 Path(__file__).parent / "styles" / "glassmorphism.qss",
                 Path.cwd() / "src" / "ui" / "styles" / "glassmorphism.qss"
@@ -373,7 +476,7 @@ class MainWindow(QMainWindow):
             if styles_path:
                 with open(styles_path, 'r', encoding='utf-8') as f:
                     self.setStyleSheet(f.read())
-                print(f"✅ Estilos carregados de: {styles_path}")
+                print(f"✅ Estilos responsivos carregados de: {styles_path}")
             else:
                 print("⚠️ Arquivo de estilos não encontrado")
                 print(f"Procurou em: {[str(p) for p in possible_paths]}")

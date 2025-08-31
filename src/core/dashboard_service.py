@@ -285,14 +285,17 @@ class DashboardService:
     
     def _get_seller_name(self, seller_id: str) -> str:
         """Obter nome do vendedor."""
-        # Mapeamento simples - em produção seria uma tabela de usuários
-        names = {
-            "giovanna": "Giovanna",
-            "joao": "João Silva",
-            "maria": "Maria Santos",
-            "pedro": "Pedro Costa"
-        }
-        return names.get(seller_id, seller_id.title())
+        # Buscar nome real do banco de dados
+        cursor = self.database.connection.execute("""
+            SELECT name FROM sellers WHERE id = ?
+        """, (seller_id,))
+        
+        result = cursor.fetchone()
+        if result:
+            return result['name']
+        
+        # Fallback para ID se não encontrar
+        return seller_id.title()
     
     def _get_recent_calls(self, seller_id: str, limit: int = 5) -> List[CallHistory]:
         """Obter chamadas recentes do vendedor."""

@@ -12,8 +12,8 @@ import random
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.config import create_config
-from data.database import DatabaseManager
-from data.dao_mentor import DAOMentor
+from src.data.database import DatabaseManager
+from src.data.dao_mentor import DAOMentor
 from core.dashboard_service import DashboardService
 
 

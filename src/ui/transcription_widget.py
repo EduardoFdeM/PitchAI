@@ -40,11 +40,9 @@ class TranscriptionWidget(QWidget):
     def _setup_ui(self):
         """Configurar interface de transcrição."""
         layout = QVBoxLayout(self)
-
-        # Header com controles
-        header_layout = QHBoxLayout()
-
-        header_label = QLabel("🎤 Transcrição em Tempo Real")
+        
+        # Header
+        header_label = QLabel("Transcrição em Tempo Real")
         header_label.setObjectName("sectionHeader")
         header_label.setStyleSheet("""
             QLabel#sectionHeader {
@@ -101,197 +99,82 @@ class TranscriptionWidget(QWidget):
             }
         """)
         layout.addWidget(self.transcription_area)
-
-        # Status da transcrição
-        self.status_label = QLabel("")
-        self.status_label.setStyleSheet("color: #888888; font-size: 12px; padding: 5px;")
-        layout.addWidget(self.status_label)
-
-        # Modo tela cheia (inicialmente oculto)
-        self.fullscreen_mode = False
-
-        # Inicializar sem conteúdo de exemplo
-        self.clear_transcription()
+        
+        # Adicionar conteúdo de exemplo
+        self._add_example_content()
     
-    def start_recording(self, call_id: str):
-        """Iniciar gravação de nova chamada."""
-        self.current_call_id = call_id
-        self.is_recording = True
-        self.clear_transcription()
-        self._update_status("🎤 Gravação iniciada")
-        self.save_button.setEnabled(True)
-        self.summary_button.setEnabled(False)
-
-    def stop_recording(self):
-        """Parar gravação."""
-        self.is_recording = False
-        self._update_status("⏹️ Gravação parada")
-        self.save_button.setEnabled(True)
-        self.summary_button.setEnabled(True)
-
-    def _update_status(self, message: str):
-        """Atualizar mensagem de status."""
-        self.status_label.setText(message)
-
-    def _save_transcription(self):
-        """Salvar transcrição no BD."""
-        if not self.current_call_id or not self.database_manager:
-            self._update_status("❌ Erro: Não foi possível salvar")
-            return
-
+    def _add_example_content(self):
+        """Adicionar conteúdo inicial vazio."""
+        initial_content = """
+<div style='color: #88C0D0; font-weight: bold; margin-bottom: 10px;'>
+    Aguardando transcrição...
+</div>
+<div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
+    A transcrição aparecerá aqui quando você começar a falar.
+</div>
+        """
+        self.transcription_area.setHtml(initial_content)
+    
+    def load_real_transcription(self, call_id: str):
+        """Carregar transcrição real do banco de dados."""
         try:
-            transcription_text = self.export_transcription()
-
-            # Salvar no BD
-            success = self.database_manager.save_transcription(
-                call_id=self.current_call_id,
-                text=transcription_text,
-                speaker="combined",
-                timestamp=time.time()
-            )
-
-            if success:
-                self._update_status("✅ Transcrição salva com sucesso")
-                self.transcription_saved.emit(self.current_call_id)
+            from data.database import DatabaseManager
+            
+            # Conectar ao banco
+            db_path = "data/pitchai.db"
+            db = DatabaseManager(db_path)
+            
+            # Buscar transcrição real
+            cursor = db.connection.execute("""
+                SELECT speaker_id, text, timestamp 
+                FROM transcription 
+                WHERE call_id = ? 
+                ORDER BY timestamp ASC
+            """, (call_id,))
+            
+            transcriptions = cursor.fetchall()
+            
+            if transcriptions:
+                content = ""
+                for trans in transcriptions:
+                    timestamp = trans['timestamp']
+                    speaker = "Vendedor" if trans['speaker_id'] == "vendor" else "Cliente"
+                    text = trans['text']
+                    
+                    content += f"""
+<div style='color: #88C0D0; font-weight: bold; margin-bottom: 10px;'>
+    [{timestamp}] {speaker}
+</div>
+<div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
+    {text}
+</div>
+                    """
+                
+                self.transcription_area.setHtml(content)
             else:
-                self._update_status("❌ Erro ao salvar transcrição")
-
+                self._add_example_content()
+                
         except Exception as e:
-            self.logger.error(f"Erro ao salvar transcrição: {e}")
-            self._update_status(f"❌ Erro: {str(e)}")
-
-    def _generate_summary(self):
-        """Gerar resumo da reunião."""
-        if not self.current_call_id:
-            self._update_status("❌ Erro: Nenhum call_id disponível")
-            return
-
-        self._update_status("🤖 Gerando resumo...")
-        self.summary_requested.emit(self.current_call_id)
-
-    def set_summary_result(self, summary: Dict[str, Any]):
-        """Receber e exibir resultado do resumo."""
-        try:
-            summary_text = f"""
-📋 RESUMO DA REUNIÃO
-===================
-
-🎯 PONTOS PRINCIPAIS:
-{chr(10).join(f"• {point}" for point in summary.get('key_points', []))}
-
-🚨 OBJEÇÕES TRATADAS:
-{chr(10).join(f"• {obj.get('type', 'N/A')}: {obj.get('handled', 'Não tratado')}" for obj in summary.get('objections', []))}
-
-📝 PRÓXIMOS PASSOS:
-{chr(10).join(f"• {step.get('desc', '')} (Prazo: {step.get('due', 'N/A')})" for step in summary.get('next_steps', []))}
-
-📊 MÉTRICAS:
-• Tempo vendedor: {summary.get('metrics', {}).get('talk_time_vendor_pct', 0):.1f}%
-• Tempo cliente: {summary.get('metrics', {}).get('talk_time_client_pct', 0):.1f}%
-• Sentimento médio: {summary.get('metrics', {}).get('sentiment_avg', 0):.2f}
-• Sinais de compra: {summary.get('metrics', {}).get('buying_signals', 0)}
-
-Gerado em: {time.strftime('%H:%M:%S', time.localtime())}
-"""
-
-            # Adicionar resumo à transcrição
-            current_text = self.transcription_area.toPlainText()
-            if current_text:
-                new_text = current_text + "\n\n" + "="*50 + "\n" + summary_text
-            else:
-                new_text = summary_text
-
-            self.transcription_area.setText(new_text)
-            self._update_status("✅ Resumo gerado com sucesso")
-
-            # Rolar para o final
-            scrollbar = self.transcription_area.verticalScrollBar()
-            scrollbar.setValue(scrollbar.maximum())
-
-        except Exception as e:
-            self.logger.error(f"Erro ao exibir resumo: {e}")
-            self._update_status(f"❌ Erro ao exibir resumo: {str(e)}")
-
-    def _toggle_fullscreen(self):
-        """Alternar entre modo normal e tela cheia."""
-        self.fullscreen_mode = not self.fullscreen_mode
-
-        if self.fullscreen_mode:
-            self._enter_fullscreen_mode()
-        else:
-            self._exit_fullscreen_mode()
-
-    def _enter_fullscreen_mode(self):
-        """Entrar no modo tela cheia."""
-        # Atualizar botão
-        self.expand_button.setText("⛶")  # Mesmo ícone, mas tooltip muda
-        self.expand_button.setToolTip("Voltar ao modo normal")
-
-        # Ocultar controles desnecessários no modo tela cheia
-        self.save_button.hide()
-        self.summary_button.hide()
-
-        # Expandir área de transcrição
-        self.transcription_area.setMaximumHeight(10000)  # Altura máxima
-
-        # Atualizar header
-        if hasattr(self, 'header_label'):
-            self.header_label.setText("📝 Transcrição Completa")
-
-        # Emitir sinal para MainWindow abrir em tela cheia
-        transcription_text = self.export_transcription()
-        self.fullscreen_requested.emit(transcription_text)
-
-    def _exit_fullscreen_mode(self):
-        """Sair do modo tela cheia."""
-        # Atualizar botão
-        self.expand_button.setText("⛶")
-        self.expand_button.setToolTip("Expandir para tela cheia")
-
-        # Mostrar controles novamente
-        self.save_button.show()
-        self.summary_button.show()
-
-        # Restaurar altura normal
-        self.transcription_area.setMaximumHeight(200)
-
-        # Atualizar header
-        if hasattr(self, 'header_label'):
-            self.header_label.setText("🎤 Transcrição em Tempo Real")
-
-    def enter_fullscreen_mode(self):
-        """Método público para entrar em modo tela cheia."""
-        if not self.fullscreen_mode:
-            self._enter_fullscreen_mode()
-
-    def exit_fullscreen_mode(self):
-        """Método público para sair do modo tela cheia."""
-        if self.fullscreen_mode:
-            self._exit_fullscreen_mode()
-
-    def is_fullscreen(self) -> bool:
-        """Verificar se está em modo tela cheia."""
-        return self.fullscreen_mode
+            print(f"❌ Erro ao carregar transcrição: {e}")
+            self._add_example_content()
     
     @pyqtSlot(str, str)
     def add_transcription(self, text: str, speaker_id: str):
         """Adicionar nova transcrição."""
         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
         
-        # Determinar cor e ícone do falante
+        # Determinar cor e nome do falante
         if speaker_id == "vendor":
             color = "#88C0D0"
-            icon = "🔵"
             name = "Vendedor"
         else:
             color = "#D08770" 
-            icon = "🟠"
             name = "Cliente"
         
         # Criar HTML para nova transcrição
         html_content = f"""
         <div style='color: {color}; font-weight: bold; margin-bottom: 10px; margin-top: 15px;'>
-            [{timestamp}] {icon} {name}
+            [{timestamp}] {name}
         </div>
         <div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
             {text}

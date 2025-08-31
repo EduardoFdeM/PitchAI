@@ -29,10 +29,6 @@ class OpportunityCard(QWidget):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(15)
         
-        # Ícone de oportunidade (campainha)
-        icon_label = QLabel("🔔")
-        icon_label.setStyleSheet("font-size: 20px;")
-        
         # Conteúdo da oportunidade
         content_layout = QVBoxLayout()
         content_layout.setSpacing(5)
@@ -49,7 +45,6 @@ class OpportunityCard(QWidget):
         content_layout.addWidget(title_label)
         content_layout.addWidget(text_label)
         
-        layout.addWidget(icon_label)
         layout.addLayout(content_layout)
         layout.addStretch()
         

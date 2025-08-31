@@ -31,9 +31,7 @@ class HistoryItemCard(QWidget):
         layout.setContentsMargins(20, 15, 20, 15)
         layout.setSpacing(15)
         
-        # Ícone de sessão
-        icon_label = QLabel("🎙️")
-        icon_label.setStyleSheet("font-size: 24px;")
+        # Remover ícone de sessão - deixar apenas texto
         
         # Informações da sessão
         info_layout = QVBoxLayout()
@@ -56,7 +54,6 @@ class HistoryItemCard(QWidget):
         info_layout.addWidget(title_label)
         info_layout.addLayout(date_duration_layout)
         
-        layout.addWidget(icon_label)
         layout.addLayout(info_layout)
         layout.addStretch()
         
@@ -82,7 +79,7 @@ class HistoryWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()
-        self._load_sample_history()
+        self._load_real_history()
         
     def _setup_ui(self):
         """Configurar interface do histórico."""
@@ -104,8 +101,8 @@ class HistoryWidget(QWidget):
         header_layout.addStretch()
         
         # Título
-        title_label = QLabel("📋 Histórico de Gravações")
-        title_label.setStyleSheet("color: white; font-size: 24px; font-weight: bold;")
+        title_label = QLabel("Histórico de Gravações")
+        title_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -132,42 +129,104 @@ class HistoryWidget(QWidget):
         
         self._apply_styles()
     
-    def _load_sample_history(self):
-        """Carregar histórico de exemplo."""
-        # Adicionar alguns itens de exemplo organizados por data
-        sample_items = [
-            ("sessao_001", "New Hack Hackathon", "15 Jan 2025", "45:32"),
-            ("sessao_002", "Reunião com Cliente ABC", "15 Jan 2025", "23:15"),
-            ("sessao_003", "Apresentação Produto XYZ", "14 Jan 2025", "1:12:45"),
-            ("sessao_004", "Demo para Equipe de Vendas", "14 Jan 2025", "38:20"),
-            ("sessao_005", "Call com Prospect Premium", "13 Jan 2025", "52:10"),
-            ("sessao_006", "Reunião de Planejamento", "13 Jan 2025", "1:05:30"),
-            ("sessao_007", "Apresentação para Investidores", "12 Jan 2025", "1:25:15"),
-            ("sessao_008", "Treinamento de Vendas", "12 Jan 2025", "2:10:45"),
-        ]
-        
-        # Agrupar por data
-        grouped_items = {}
-        for session_id, title, date, duration in sample_items:
-            if date not in grouped_items:
-                grouped_items[date] = []
-            grouped_items[date].append((session_id, title, duration))
-        
-        # Adicionar grupos por data
-        for date in sorted(grouped_items.keys(), reverse=True):
-            # Título da data
-            date_label = QLabel(date)
-            date_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold; margin-top: 20px; margin-bottom: 10px;")
-            self.history_container_layout.addWidget(date_label)
+    def _load_real_history(self):
+        """Carregar histórico real do banco de dados."""
+        try:
+            # Importar database manager
+            from data.database import DatabaseManager
+            import sqlite3
+            from datetime import datetime
             
-            # Cards da data
-            for session_id, title, duration in grouped_items[date]:
-                card = HistoryItemCard(session_id, title, date, duration)
-                card.clicked.connect(self.history_item_clicked.emit)
-                self.history_container_layout.addWidget(card)
-        
-        # Adicionar spacer para empurrar cards para cima
-        self.history_container_layout.addStretch()
+            # Conectar ao banco
+            db_path = "data/pitchai.db"
+            db = DatabaseManager(db_path)
+            
+            # Buscar chamadas reais
+            cursor = db.connection.execute("""
+                SELECT 
+                    id,
+                    start_time,
+                    end_time,
+                    duration_seconds,
+                    status,
+                    summary
+                FROM call 
+                ORDER BY start_time DESC
+                LIMIT 50
+            """)
+            
+            calls = cursor.fetchall()
+            
+            if not calls:
+                # Se não há dados, mostrar mensagem
+                no_data_label = QLabel("Nenhuma gravação encontrada")
+                no_data_label.setStyleSheet("color: #888888; font-size: 16px; text-align: center; padding: 40px;")
+                self.history_container_layout.addWidget(no_data_label)
+                return
+            
+            # Agrupar por data
+            grouped_calls = {}
+            for call in calls:
+                start_time = datetime.fromisoformat(call['start_time'])
+                date_str = start_time.strftime("%d %b %Y")
+                
+                if date_str not in grouped_calls:
+                    grouped_calls[date_str] = []
+                
+                # Calcular duração
+                if call['duration_seconds']:
+                    duration = call['duration_seconds']
+                    hours = duration // 3600
+                    minutes = (duration % 3600) // 60
+                    seconds = duration % 60
+                    
+                    if hours > 0:
+                        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+                    else:
+                        duration_str = f"{minutes}:{seconds:02d}"
+                else:
+                    duration_str = "00:00"
+                
+                # Título baseado no status ou resumo
+                if call['summary']:
+                    title = call['summary'][:50] + "..." if len(call['summary']) > 50 else call['summary']
+                else:
+                    title = f"Chamada {call['status'].title()}"
+                
+                grouped_calls[date_str].append({
+                    'id': call['id'],
+                    'title': title,
+                    'duration': duration_str,
+                    'status': call['status']
+                })
+            
+            # Adicionar grupos por data
+            for date in sorted(grouped_calls.keys(), reverse=True):
+                # Título da data
+                date_label = QLabel(date)
+                date_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold; margin-top: 20px; margin-bottom: 10px;")
+                self.history_container_layout.addWidget(date_label)
+                
+                # Cards da data
+                for call_data in grouped_calls[date]:
+                    card = HistoryItemCard(
+                        call_data['id'], 
+                        call_data['title'], 
+                        date, 
+                        call_data['duration']
+                    )
+                    card.clicked.connect(self.history_item_clicked.emit)
+                    self.history_container_layout.addWidget(card)
+            
+            # Adicionar spacer para empurrar cards para cima
+            self.history_container_layout.addStretch()
+            
+        except Exception as e:
+            print(f"❌ Erro ao carregar histórico: {e}")
+            # Fallback para mensagem de erro
+            error_label = QLabel("Erro ao carregar histórico")
+            error_label.setStyleSheet("color: #BF616A; font-size: 16px; text-align: center; padding: 40px;")
+            self.history_container_layout.addWidget(error_label)
     
     def _apply_styles(self):
         """Aplicar estilos do histórico."""

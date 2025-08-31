@@ -21,11 +21,11 @@ from math import ceil
 from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
 
 try:
-    import pyaudiowpatch as pyaudio
+    import pyaudio
     PYAUDIO_AVAILABLE = True
 except ImportError:
     PYAUDIO_AVAILABLE = False
-    print("⚠️ PyAudioWPatch não disponível. Usando simulação.")
+    print("⚠️ PyAudio não disponível. Usando simulação.")
 
 
 @dataclass
@@ -118,35 +118,56 @@ class AudioCaptureThread(QThread):
         if not PYAUDIO_AVAILABLE:
             return
             
-        self.pa = pyaudio.PyAudio()
-        
-        # Encontrar dispositivo apropriado
-        if self.device_index is None:
-            self.device_index = self._find_device()
-        
-        if self.device_index is None:
-            raise RuntimeError(f"Dispositivo não encontrado para {self.source}")
-        
-        # Obter informações do dispositivo
-        device_info = self.pa.get_device_info_by_index(self.device_index)
-        logging.info(f"Dispositivo {self.source}: {device_info['name']}")
-        self._device_rate = int(device_info['defaultSampleRate'])
-        # usar canais nativos do dispositivo para abrir sem erro; downmixaremos depois
-        self._device_channels = max(1, device_info.get('maxInputChannels', 1))
-        open_channels = min(self._device_channels, 2)  # evita 5.1/7.1
-        
-        # Configurar stream
-        self.audio_stream = self.pa.open(
-            format=pyaudio.paInt16,
-            channels=open_channels,
-            rate=self._device_rate,
-            input=True,
-            input_device_index=self.device_index,
-            frames_per_buffer=self.config.audio.chunk_size
-        )
-        
-        logging.info(f"✅ Stream de áudio configurado para {self.source} "
-                    f"(device: {self.device_index}, rate: {self.format.sample_rate}Hz)")
+        try:
+            self.pa = pyaudio.PyAudio()
+            
+            # Encontrar dispositivo apropriado
+            if self.device_index is None:
+                self.device_index = self._find_device()
+            
+            if self.device_index is None:
+                logging.warning(f"Dispositivo não encontrado para {self.source} - usando padrão")
+                self.device_index = None  # Usar dispositivo padrão
+            
+            # Obter informações do dispositivo
+            if self.device_index is not None:
+                try:
+                    device_info = self.pa.get_device_info_by_index(self.device_index)
+                    logging.info(f"Dispositivo {self.source}: {device_info['name']}")
+                    self._device_rate = int(device_info['defaultSampleRate'])
+                    self._device_channels = max(1, device_info.get('maxInputChannels', 1))
+                except Exception as e:
+                    logging.warning(f"Erro ao obter info do dispositivo {self.device_index}: {e}")
+                    self._device_rate = 48000
+                    self._device_channels = 1
+            else:
+                # Usar valores padrão
+                self._device_rate = 48000
+                self._device_channels = 1
+            
+            open_channels = min(self._device_channels, 2)  # evita 5.1/7.1
+            
+            # Configurar stream com tratamento de erro
+            try:
+                self.audio_stream = self.pa.open(
+                    format=pyaudio.paInt16,
+                    channels=open_channels,
+                    rate=self._device_rate,
+                    input=True,
+                    input_device_index=self.device_index,
+                    frames_per_buffer=self.config.audio.chunk_size
+                )
+                
+                logging.info(f"✅ Stream de áudio configurado para {self.source} "
+                            f"(device: {self.device_index}, rate: {self._device_rate}Hz)")
+                            
+            except Exception as e:
+                logging.error(f"Erro ao abrir stream de áudio: {e}")
+                raise RuntimeError(f"Não foi possível abrir stream de áudio: {e}")
+                
+        except Exception as e:
+            logging.error(f"Erro na inicialização de áudio: {e}")
+            raise
     
     def _find_device(self) -> Optional[int]:
         """Encontrar dispositivo apropriado."""
@@ -154,17 +175,52 @@ class AudioCaptureThread(QThread):
             return None
         
         if self.source == "loopback":
-            # Usar PyAudioWPatch para encontrar loopback padrão
+            # Para PyAudio normal, procurar por dispositivos que possam ser loopback
             try:
-                default_lb = self.pa.get_default_wasapi_loopback()
-                logging.info(f"Loopback padrão encontrado: {default_lb['name']}")
-                return default_lb['index']
+                for i in range(self.pa.get_device_count()):
+                    device_info = self.pa.get_device_info_by_index(i)
+                    if (device_info['maxInputChannels'] > 0 and 
+                        ('loopback' in device_info['name'].lower() or 
+                         'system' in device_info['name'].lower() or
+                         'stereo mix' in device_info['name'].lower())):
+                        logging.info(f"Loopback encontrado: {device_info['name']}")
+                        return i
+                logging.warning("Nenhum dispositivo loopback encontrado")
+                return None
             except Exception as e:
-                logging.warning(f"Erro ao obter loopback padrão: {e}")
+                logging.warning(f"Erro ao procurar loopback: {e}")
                 return None
         else:
             # Microfone - usar dispositivo padrão
             return None
+    
+    def set_input_device(self, device_index: int):
+        """Configurar dispositivo de entrada específico."""
+        if not PYAUDIO_AVAILABLE:
+            logging.warning("PyAudio não disponível")
+            return
+            
+        try:
+            # Verificar se o dispositivo existe
+            device_info = self.pa.get_device_info_by_index(device_index)
+            logging.info(f"Configurando dispositivo de entrada: {device_info['name']}")
+            
+            # Parar captura atual se estiver ativa
+            if self.is_capturing:
+                self.stop()
+            
+            # Atualizar índice do dispositivo
+            self.device_index = device_index
+            
+            # Reconfigurar stream se PyAudio estiver inicializado
+            if hasattr(self, 'pa') and self.pa:
+                self._initialize_audio()
+                
+            logging.info(f"✅ Dispositivo de entrada configurado: {device_info['name']}")
+            
+        except Exception as e:
+            logging.error(f"Erro ao configurar dispositivo {device_index}: {e}")
+            raise
     
     def _capture_loop(self):
         """Loop de captura de áudio com timestamps."""
@@ -204,7 +260,8 @@ class AudioCaptureThread(QThread):
                     break
     
     def _simulate_audio(self):
-        """Simular dados de áudio para desenvolvimento."""
+        """Simular dados de áudio - APENAS EM CASO DE FALHA CRÍTICA."""
+        logging.warning("⚠️ MODO DE FALHA: Simulando áudio - sistema real indisponível")
         self.is_running = True
         
         while self.is_running:
@@ -314,12 +371,17 @@ class AudioCapture(QObject):
                                f"(Inputs: {device_info['maxInputChannels']}, "
                                f"Rate: {int(device_info['defaultSampleRate'])} Hz)")
         
-        # Listar dispositivos de loopback
+        # Listar dispositivos de loopback (para PyAudio normal)
         self.logger.info("  📻 Dispositivos de loopback:")
         try:
-            for info in pa.get_loopback_device_info_generator():
-                self.logger.info(f"    [{info['index']}] {info['name']} "
-                               f"(Rate: {int(info['defaultSampleRate'])} Hz)")
+            for i in range(pa.get_device_count()):
+                device_info = pa.get_device_info_by_index(i)
+                if (device_info['maxInputChannels'] > 0 and 
+                    ('loopback' in device_info['name'].lower() or 
+                     'system' in device_info['name'].lower() or
+                     'stereo mix' in device_info['name'].lower())):
+                    self.logger.info(f"    [{i}] {device_info['name']} "
+                                   f"(Rate: {int(device_info['defaultSampleRate'])} Hz)")
         except Exception as e:
             self.logger.warning(f"    Erro ao listar loopbacks: {e}")
         

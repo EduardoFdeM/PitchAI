@@ -148,21 +148,16 @@ class DashboardWidget(QWidget):
         # Lado direito: Card da empresa
         empresa_card = QFrame()
         empresa_card.setObjectName("metricFrame")
-        empresa_card.setFixedSize(300, 70)
+        empresa_card.setFixedSize(200, 70)  # Reduzir largura para iPhone
         
         empresa_inner_layout = QHBoxLayout(empresa_card)
         empresa_inner_layout.setContentsMargins(20, 15, 20, 15)
         empresa_inner_layout.setSpacing(15)
         
-        # Ícone da empresa (prédio)
-        empresa_icon = QLabel("🏢")
-        empresa_icon.setStyleSheet("font-size: 24px;")
-        
         # Nome da empresa
-        empresa_nome = QLabel("SOMOS Educação")
+        empresa_nome = QLabel("TechCorp Solutions")
         empresa_nome.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
         
-        empresa_inner_layout.addWidget(empresa_icon)
         empresa_inner_layout.addWidget(empresa_nome)
         empresa_inner_layout.addStretch()
         
@@ -187,12 +182,12 @@ class DashboardWidget(QWidget):
         
         # Cards de metas
         metas_layout = QHBoxLayout()
-        metas_layout.setSpacing(20)
+        metas_layout.setSpacing(15)  # Reduzir espaçamento para iPhone
         
         # Card 1: Vendas concluídas
         vendas_card = QFrame()
         vendas_card.setObjectName("metricFrame")
-        vendas_card.setFixedSize(280, 140)
+        vendas_card.setFixedSize(170, 120)  # Reduzir tamanho para iPhone
         
         vendas_layout = QVBoxLayout(vendas_card)
         vendas_layout.setContentsMargins(20, 20, 20, 20)
@@ -217,12 +212,12 @@ class DashboardWidget(QWidget):
         # Card 2: Ranking
         ranking_card = QFrame()
         ranking_card.setObjectName("metricFrame")
-        ranking_card.setFixedSize(280, 140)
+        ranking_card.setFixedSize(170, 120)  # Reduzir tamanho para iPhone
         
         ranking_layout = QVBoxLayout(ranking_card)
         ranking_layout.setContentsMargins(20, 20, 20, 20)
         
-        ranking_title = QLabel("Ranking..")
+        ranking_title = QLabel("Ranking")
         ranking_title.setStyleSheet("color: white; font-size: 14px; font-weight: normal;")
         
         ranking_value_layout = QHBoxLayout()
@@ -258,8 +253,9 @@ class DashboardWidget(QWidget):
         pendente_layout = QVBoxLayout(pendente_card)
         pendente_layout.setContentsMargins(20, 20, 20, 20)
         
-        pendente_title = QLabel("Meta de Volume de Vendas (Unidades/Contratos)")
-        pendente_title.setStyleSheet("color: white; font-size: 14px; font-weight: normal;")
+        pendente_title = QLabel("Meta de Volume de Vendas\n(Unidades/Contratos)")
+        pendente_title.setStyleSheet("color: white; font-size: 13px; font-weight: normal; line-height: 1.2;")
+        pendente_title.setWordWrap(True)
         
         # Barra de progresso
         progress_layout = QHBoxLayout()
@@ -270,7 +266,7 @@ class DashboardWidget(QWidget):
         
         # Barra preenchida
         progress_filled = QFrame()
-        progress_filled.setFixedSize(180, 10)  # 45% de 400px
+        progress_filled.setFixedSize(140, 10)  # 45% de 310px (tamanho reduzido)
         # Estilos movidos para glassmorphism.qss
         
         progress_layout.addWidget(progress_filled)
