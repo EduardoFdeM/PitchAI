@@ -1,3 +1,4 @@
+
 """
 Analysis Widget - Análise em Tempo Real
 ===================================o

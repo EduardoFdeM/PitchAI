@@ -11,7 +11,7 @@ Coordena todos os módulos da aplicação:
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 from PyQt6.QtWidgets import QMainWindow
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 
@@ -28,6 +28,7 @@ from data.dao_mentor import DAOMentor
 from client_profile.service import ClientProfileService
 from mentor.mentor_engine import MentorEngine
 from mentor.coach_feedback import CoachFeedback
+from .dashboard_service import DashboardService
 
 
 class PitchAIApp(QObject):
@@ -56,6 +57,9 @@ class PitchAIApp(QObject):
         self.client_profile_service: Optional[ClientProfileService] = None
         self.coach_feedback: Optional[CoachFeedback] = None
         self.mentor_engine: Optional[MentorEngine] = None
+        
+        # Componente do Dashboard
+        self.dashboard_service: Optional[DashboardService] = None
         
         # Sistema de tratamento de erros
         self.error_handler: Optional[ErrorHandler] = None
@@ -107,7 +111,10 @@ class PitchAIApp(QObject):
             # 4. Inicializar Mentor Engine
             self._initialize_mentor_engine()
             
-            # 5. Inicializar captura de áudio
+            # 5. Inicializar Dashboard Service
+            self._initialize_dashboard_service()
+            
+            # 6. Inicializar captura de áudio
             self._initialize_audio()
             
             # 6. Inicializar interface
@@ -189,6 +196,12 @@ class PitchAIApp(QObject):
         )
         
         self.logger.info("✅ Mentor Engine inicializado")
+    
+    @handle_errors(severity=ErrorSeverity.MEDIUM, category=ErrorCategory.DATABASE, retry=True)
+    def _initialize_dashboard_service(self):
+        """Inicializar Dashboard Service."""
+        self.dashboard_service = DashboardService(self.database, self.dao_mentor)
+        self.logger.info("✅ Dashboard Service inicializado")
     
     def _initialize_error_handler(self):
         """Inicializar sistema de tratamento de erros."""

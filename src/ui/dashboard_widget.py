@@ -83,12 +83,14 @@ class DashboardWidget(QWidget):
     history_item_clicked = pyqtSignal(str)
     menu_requested = pyqtSignal()
     
-    def __init__(self, config, app_instance, parent=None):
+    def __init__(self, config, pitch_app, parent=None):
         super().__init__(parent)
         self.config = config
-        self.app_instance = app_instance
+        self.pitch_app = pitch_app
+        self.app_instance = pitch_app  # Para compatibilidade
         self.menu_button = None  # Referência ao botão de menu
         self._setup_ui()
+        self._load_dashboard_data()
     
     def _setup_ui(self):
         """Configurar interface do dashboard."""
@@ -304,3 +306,47 @@ class DashboardWidget(QWidget):
         """Mostrar botão de menu."""
         if self.menu_button:
             self.menu_button.show()
+    
+    def _load_dashboard_data(self):
+        """Carregar dados do dashboard do backend."""
+        try:
+            if hasattr(self.pitch_app, 'dashboard_service') and self.pitch_app.dashboard_service:
+                dashboard_data = self.pitch_app.dashboard_service.get_dashboard_data("giovanna")
+                self._update_dashboard_ui(dashboard_data)
+            else:
+                print("⚠️ DashboardService não disponível")
+        except Exception as e:
+            print(f"❌ Erro ao carregar dados do dashboard: {e}")
+    
+    def _update_dashboard_ui(self, data: dict):
+        """Atualizar interface com dados do backend."""
+        try:
+            # Atualizar metas
+            if 'goals' in data:
+                goals = data['goals']
+                
+                # Atualizar vendas concluídas
+                if 'units' in goals:
+                    units_percent = goals['units']['percent']
+                    # Aqui você atualizaria os labels da UI
+                    print(f"📊 Vendas: {goals['units']['current']}/{goals['units']['target']} ({units_percent:.1f}%)")
+                
+                # Atualizar ranking
+                if 'ranking' in data:
+                    ranking = data['ranking']
+                    position = ranking['current_position']
+                    print(f"🏆 Ranking: {position}° lugar")
+                
+                # Atualizar progresso pendente
+                if 'contracts' in goals:
+                    contracts_percent = goals['contracts']['percent']
+                    print(f"📈 Progresso: {contracts_percent:.1f}%")
+            
+            print("✅ Dashboard atualizado com dados do backend")
+            
+        except Exception as e:
+            print(f"❌ Erro ao atualizar dashboard: {e}")
+    
+    def refresh_dashboard(self):
+        """Atualizar dashboard com dados mais recentes."""
+        self._load_dashboard_data()

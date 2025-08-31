@@ -1,195 +1,156 @@
 """
-PitchAI - Frontend Principal
-============================
+PitchAI - Frontend Integrado com Backend Completo
+===============================================
 
-Versão frontend-only que usa os widgets modulares existentes
-com dados mockados para desenvolvimento e demonstração.
+Integração completa do frontend com backend real, incluindo:
+- Banco de dados SQLite
+- Sistema de eventos
+- Captura de áudio
+- Processamento de IA
+- Mentor Engine
 """
 
 import sys
-import random
+import os
+import uuid
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QCoreApplication, QObject, pyqtSignal, QTimer
 
 # Adicionar src ao path
 sys.path.insert(0, str(Path(__file__).parent))
 
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication, QObject, pyqtSignal, QTimer
 from ui.main_window import MainWindow
+from core.config import create_config
+from core.application import PitchAIApp
 
 
-class MockConfig:
-    """Configuração mockada para frontend-only."""
+class IntegratedPitchAI(QObject):
+    """Aplicação PitchAI integrada com backend completo."""
     
     def __init__(self):
-        self.app_dir = Path(__file__).parent.parent
-        self.ui = MockUIConfig()
-
-class MockUIConfig:
-    """Configurações de UI mockadas."""
-    
-    def __init__(self):
-        self.window_width = 1400
-        self.window_height = 900
-        self.theme = "glassmorphism"
-
-
-class FrontendApp(QObject):
-    """Aplicação frontend-only com dados simulados."""
-    
-    # Sinais para comunicação com UI
-    transcription_ready = pyqtSignal(str, str)
-    sentiment_updated = pyqtSignal(float, str)
-    objection_detected = pyqtSignal(str)
-    opportunity_detected = pyqtSignal(str)
-    
-    def __init__(self, config):
         super().__init__()
-        self.config = config
+        
+        # Configuração
+        self.config = create_config()
+        
+        # Aplicação principal
+        self.pitch_app = None
         self.main_window = None
-        self.is_recording = False
         
-        # Dados simulados
-        self.transcript_lines = [
-            ("Olá! Obrigado por aceitar nossa reunião hoje.", "vendor"),
-            ("Como posso ajudá-lo com nossa solução de CRM?", "vendor"),
-            ("Estamos avaliando opções, mas estou preocupado com o preço...", "client"),
-            ("Entendo perfeitamente. Vamos falar sobre o ROI que nossos clientes têm visto.", "vendor"),
-            ("Posso mostrar um case de sucesso de uma empresa similar à sua.", "vendor"),
-            ("Isso parece interessante. Quanto tempo leva para implementar?", "client"),
-            ("Normalmente entre 2-4 semanas, dependendo da complexidade.", "vendor"),
-            ("E qual é o custo de manutenção mensal?", "client"),
-            ("Vou detalhar nossa estrutura de pricing para você...", "vendor")
-        ]
-        self.current_line = 0
-        
-        # Timers para simulação
-        self.transcript_timer = QTimer()
-        self.transcript_timer.timeout.connect(self._simulate_transcription)
-        
-        self.sentiment_timer = QTimer()
-        self.sentiment_timer.timeout.connect(self._simulate_sentiment)
-        
-        self.objection_timer = QTimer()
-        self.objection_timer.timeout.connect(self._simulate_objections)
-        
-        self.opportunity_timer = QTimer()
-        self.opportunity_timer.timeout.connect(self._simulate_opportunities)
+        # Estado
+        self.is_initialized = False
     
     def initialize(self):
-        """Inicializar aplicação frontend."""
-        print("🎨 Inicializando PitchAI Frontend...")
+        """Inicializar aplicação completa."""
+        try:
+            print("🎨 Inicializando PitchAI Frontend + Backend Completo...")
+            
+            # Inicializar aplicação principal
+            self.pitch_app = PitchAIApp(self.config)
+            self.pitch_app.initialize()
+            
+            # Criar interface mantendo design original
+            self.main_window = MainWindow(self.config, self.pitch_app)
+            
+            # Conectar sinais do backend para a UI
+            self._connect_backend_signals()
+            
+            self.is_initialized = True
+            print("✅ PitchAI Frontend + Backend inicializado com sucesso!")
+            print("🚀 Interface PitchAI aberta!")
+            print("✨ PitchAI funcionando com IA integrada!")
+            print("🎤 Pronto para gravação e análise em tempo real")
+            print("💾 Banco de dados SQLite ativo")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erro ao inicializar PitchAI: {e}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            return False
+    
+    def _connect_backend_signals(self):
+        """Conectar sinais do backend para a UI."""
+        if not self.pitch_app or not self.main_window:
+            return
         
-        # Criar janela principal
-        self.main_window = MainWindow(self.config, self)
+        # Conectar sinais de transcrição
+        self.pitch_app.transcription_ready.connect(self._on_transcription_ready)
         
-        print("✅ Frontend inicializado com sucesso!")
-        return True
+        # Conectar sinais de sentimento
+        self.pitch_app.sentiment_updated.connect(self._on_sentiment_updated)
+        
+        # Conectar sinais de objeções
+        self.pitch_app.objection_detected.connect(self._on_objection_detected)
+        
+        print("🔗 Sinais do backend conectados à UI")
+    
+    def _on_transcription_ready(self, text: str, speaker_id: str):
+        """Handler para transcrição pronta."""
+        if self.main_window and hasattr(self.main_window, 'analysis_widget'):
+            # Atualizar transcrição na UI
+            self.main_window.analysis_widget.update_transcription(text, speaker_id)
+    
+    def _on_sentiment_updated(self, sentiment_data: dict):
+        """Handler para atualização de sentimento."""
+        if self.main_window and hasattr(self.main_window, 'analysis_widget'):
+            # Atualizar sentimento na UI
+            self.main_window.analysis_widget.update_sentiment(sentiment_data)
+    
+    def _on_objection_detected(self, objection: str, suggestions: list):
+        """Handler para objeção detectada."""
+        if self.main_window and hasattr(self.main_window, 'analysis_widget'):
+            # Adicionar objeção na UI
+            self.main_window.analysis_widget.add_objection(objection, suggestions)
     
     def show(self):
-        """Mostrar janela principal."""
+        """Mostrar interface."""
         if self.main_window:
             self.main_window.show()
-            print("🚀 Interface PitchAI aberta!")
     
-    def start_recording(self):
-        """Iniciar 'gravação' (simulação)."""
-        if not self.is_recording:
-            self.is_recording = True
-            print("🎤 Iniciando simulação de gravação...")
-            
-            # Iniciar timers de simulação
-            self.transcript_timer.start(4000)
-            self.sentiment_timer.start(3000)
-            self.objection_timer.start(12000) # Objeções são mais raras
-            self.opportunity_timer.start(15000) # Oportunidades também
-
-    def stop_recording(self):
-        """Parar 'gravação' (simulação)."""
-        if self.is_recording:
-            self.is_recording = False
-            print("⏹️ Parando simulação...")
-            
-            # Parar timers
-            self.transcript_timer.stop()
-            self.sentiment_timer.stop()
-            self.objection_timer.stop()
-            self.opportunity_timer.stop()
-    
-    def _simulate_transcription(self):
-        """Simular nova transcrição."""
-        if self.current_line < len(self.transcript_lines):
-            text, speaker = self.transcript_lines[self.current_line]
-            self.transcription_ready.emit(text, speaker)
-            self.current_line = (self.current_line + 1) % len(self.transcript_lines)
-    
-    def _simulate_sentiment(self):
-        """Simular atualização de sentimento."""
-        score = random.uniform(0.1, 0.9)
-        text = "Positivo"
-        if score < 0.4:
-            text = "Negativo"
-        elif score < 0.6:
-            text = "Neutro"
-        self.sentiment_updated.emit(score, text)
-    
-    def _simulate_objections(self):
-        """Simular detecção de objeções."""
-        objections = ["Preço", "Prazo de implementação", "Falta de um recurso específico", "Concorrência"]
-        if random.random() < 0.5: # 50% de chance a cada 12s
-            self.objection_detected.emit(random.choice(objections))
-
-    def _simulate_opportunities(self):
-        """Simular detecção de oportunidades."""
-        opportunities = ["Sinal de compra: 'Qual o próximo passo?'", "Oportunidade de upsell detectada.", "Cliente mencionou expansão futura."]
-        if random.random() < 0.5: # 50% de chance a cada 15s
-            self.opportunity_detected.emit(random.choice(opportunities))
-            
     def shutdown(self):
         """Encerrar aplicação."""
-        print("🔄 Encerrando PitchAI Frontend...")
-        self.stop_recording()
+        print("🔄 Encerrando PitchAI...")
+        
+        if self.pitch_app:
+            self.pitch_app.shutdown()
+        
+        print("✅ PitchAI encerrado com sucesso")
 
 
 def main():
-    """Função principal do frontend."""
+    """Função principal da aplicação integrada."""
     
     # Configurar aplicação Qt
     QCoreApplication.setOrganizationName("PitchAI")
     QCoreApplication.setOrganizationDomain("pitchai.com")
-    QCoreApplication.setApplicationName("PitchAI Frontend")
+    QCoreApplication.setApplicationName("PitchAI")
     QCoreApplication.setApplicationVersion("1.0.0")
     
     # Criar aplicação Qt
     qt_app = QApplication(sys.argv)
     qt_app.setQuitOnLastWindowClosed(True)
     
-    # Configuração mockada
-    config = MockConfig()
-    
     try:
-        # Inicializar frontend
-        frontend_app = FrontendApp(config)
+        # Inicializar aplicação integrada
+        pitch_ai = IntegratedPitchAI()
         
-        if not frontend_app.initialize():
-            print("❌ Erro na inicialização")
+        if not pitch_ai.initialize():
+            print("❌ Falha na inicialização")
             sys.exit(1)
         
-        frontend_app.show()
-        
-        print("")
-        print("✨ PitchAI Frontend funcionando!")
-        print("👋 Use os controles na interface para iniciar a simulação")
-        print("📊 Clique em 'Iniciar Gravação' para ver dados em tempo real")
-        print("")
+        # Mostrar interface
+        pitch_ai.show()
         
         # Executar aplicação
         sys.exit(qt_app.exec())
         
     except Exception as e:
-        print(f"❌ Erro ao inicializar PitchAI Frontend: {e}")
+        print(f"❌ Erro ao inicializar PitchAI: {e}")
         import traceback
-        traceback.print_exc()
+        print(f"Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
 

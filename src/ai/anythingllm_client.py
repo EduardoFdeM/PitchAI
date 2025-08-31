@@ -15,6 +15,16 @@ from typing import List, Dict, Optional, Generator, Any
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
+# Import para cache (opcional - fallback se não disponível)
+try:
+    from core.cache_manager import cache_result
+except ImportError:
+    # Fallback se cache não estiver disponível
+    def cache_result(ttl=300, priority=5, key_prefix=""):
+        def decorator(func):
+            return func
+        return decorator
+
 try:
     import sseclient
     SSE_AVAILABLE = True

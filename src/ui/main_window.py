@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 from PyQt6.QtGui import QFont, QMouseEvent
+from pathlib import Path
 
 from .start_widget import StartWidget
 from .dashboard_widget import DashboardWidget
@@ -109,10 +110,11 @@ class FloatingIcon(QWidget):
 class MainWindow(QMainWindow):
     """Janela principal da aplicação."""
     
-    def __init__(self, config, app_instance):
+    def __init__(self, config, pitch_app):
         super().__init__()
         self.config = config
-        self.app_instance = app_instance
+        self.pitch_app = pitch_app
+        self.app_instance = pitch_app  # Para compatibilidade
         self.is_minimized = False
         self.floating_icon = None
         
@@ -322,12 +324,26 @@ class MainWindow(QMainWindow):
     def _load_styles(self):
         """Carregar estilos glassmorphism."""
         try:
-            styles_path = self.config.app_dir / "src" / "ui" / "styles" / "glassmorphism.qss"
-            if styles_path.exists():
+            # Tentar diferentes caminhos para o arquivo de estilos
+            possible_paths = [
+                self.config.app_dir / "src" / "ui" / "styles" / "glassmorphism.qss",
+                Path(__file__).parent / "styles" / "glassmorphism.qss",
+                Path.cwd() / "src" / "ui" / "styles" / "glassmorphism.qss"
+            ]
+            
+            styles_path = None
+            for path in possible_paths:
+                if path.exists():
+                    styles_path = path
+                    break
+            
+            if styles_path:
                 with open(styles_path, 'r', encoding='utf-8') as f:
                     self.setStyleSheet(f.read())
+                print(f"✅ Estilos carregados de: {styles_path}")
             else:
                 print("⚠️ Arquivo de estilos não encontrado")
+                print(f"Procurou em: {[str(p) for p in possible_paths]}")
         except Exception as e:
             print(f"❌ Erro ao carregar estilos: {e}")
     
