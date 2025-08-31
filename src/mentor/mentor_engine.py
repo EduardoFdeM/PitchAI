@@ -11,8 +11,8 @@ import logging
 from typing import Dict, List, Any, Optional
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from data.dao_mentor import DAOMentor
-from client_profile.service import ClientProfileService
+from src.data.dao_mentor import DAOMentor
+from src.client_profile.service import ClientProfileService
 from .coach_feedback import CoachFeedback
 from .xp_rules import compute_xp, level_from_xp
 

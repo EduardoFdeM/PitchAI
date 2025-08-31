@@ -22,7 +22,7 @@ from .cache_manager import CacheManager, cache_result
 from ui.main_window import MainWindow
 from ai.onnx_manager import ONNXManager
 from audio.capture import AudioCapture
-from data.database import DatabaseManager
+from src.data.database import DatabaseManager
 from .dashboard_service import DashboardService
 
 

@@ -11,7 +11,7 @@ import logging
 from typing import Dict, List, Any, Optional
 
 from .scorer import complexity_score, infer_stage, extract_topics
-from data.dao_mentor import DAOMentor
+from src.data.dao_mentor import DAOMentor
 
 
 class ClientProfileService:

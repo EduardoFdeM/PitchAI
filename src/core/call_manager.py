@@ -12,9 +12,9 @@ import logging
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-from data.database import DatabaseManager
+from src.data.database import DatabaseManager
 from ai.summary_service import SummaryService
-from data.models import CallSummary
+# from data.models import CallSummary  # Comentado temporariamente
 
 
 class CallManager:

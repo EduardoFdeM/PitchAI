@@ -23,7 +23,7 @@ from disc.extractor import DiscFeatureExtractor
 from disc.scorer import DiscScorer
 from disc.recommender import DiscRecommender
 from disc.batch import DiscBatchJob
-from data.dao_disc import DAODisc
+from src.data.dao_disc import DAODisc
 
 
 class MockDAO:
