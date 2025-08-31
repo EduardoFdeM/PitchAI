@@ -24,13 +24,13 @@ class MenuWidget(QWidget):
     def _setup_ui(self):
         """Configurar interface do menu."""
         self.setObjectName("menuWidget")
-        self.setFixedWidth(200)
-        self.setFixedHeight(140)  # Altura para 3 itens com mais espaço
+        self.setFixedWidth(160)  # Reduzir largura para iPhone
+        self.setFixedHeight(120)  # Altura menor para iPhone
         print("🔧 Menu widget criado com sucesso")
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)  # Margens menores
+        layout.setSpacing(6)  # Espaçamento menor
         
         # Botão de histórico
         history_btn = QPushButton("☰ Histórico")

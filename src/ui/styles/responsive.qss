@@ -1,0 +1,240 @@
+/* 
+PitchAI - Responsive Styles for iPhone
+====================================
+
+Estilos responsivos otimizados para tamanho de iPhone.
+*/
+
+/* ===== CONTAINER PRINCIPAL RESPONSIVO ===== */
+QWidget#mainContainer {
+    background: rgba(0, 0, 0, 0.95);
+    border: none;
+    outline: none;
+    border-radius: 20px;  /* Bordas mais suaves para iPhone */
+}
+
+/* ===== BARRA DE TÍTULO RESPONSIVA ===== */
+QFrame#titleBar {
+    background: rgba(0, 0, 0, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px 20px 0px 0px;
+}
+
+QLabel#titleLabel {
+    color: rgba(255, 255, 255, 1.0);
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QLabel#statusIndicator {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 11px;
+}
+
+/* ===== BOTÕES RESPONSIVOS ===== */
+QPushButton#windowControlBtn {
+    background: rgba(73, 65, 206, 0.8);
+    border: 1px solid rgba(175, 177, 240, 0.6);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 1.0);
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 26px;
+    min-height: 26px;
+}
+
+QPushButton#windowControlBtn:hover {
+    background: rgba(73, 65, 206, 1.0);
+    border: 1px solid rgba(175, 177, 240, 0.8);
+}
+
+/* ===== ÍCONE FLUTUANTE RESPONSIVO ===== */
+QPushButton#floatingIconButton {
+    background: rgba(46, 52, 64, 1.0);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 25px;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    min-width: 50px;
+    min-height: 50px;
+}
+
+QPushButton#floatingIconButton:hover {
+    background: rgba(46, 52, 64, 1.0);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ===== MENU RESPONSIVO ===== */
+QWidget#menuWidget {
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    max-width: 160px;  /* Largura reduzida para iPhone */
+}
+
+/* ===== WIDGETS RESPONSIVOS ===== */
+QStackedWidget#mainStackedWidget {
+    background: transparent;
+    border-radius: 0px 0px 20px 20px;
+}
+
+/* ===== SCROLLBARS RESPONSIVOS ===== */
+QScrollBar:vertical {
+    background: rgba(46, 52, 64, 0.3);
+    width: 8px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(73, 65, 206, 0.6);
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: rgba(73, 65, 206, 0.8);
+}
+
+/* ===== INPUTS RESPONSIVOS ===== */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 1.0);
+    padding: 8px;
+    font-size: 12px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ===== BOTÕES RESPONSIVOS GERAIS ===== */
+QPushButton {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 1.0);
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+QPushButton:pressed {
+    background: rgba(73, 65, 206, 0.6);
+    border-color: rgba(73, 65, 206, 0.8);
+}
+
+/* ===== LABELS RESPONSIVOS ===== */
+QLabel {
+    color: rgba(255, 255, 255, 1.0);
+    font-size: 12px;
+}
+
+QLabel[class="title"] {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QLabel[class="subtitle"] {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===== FRAMES RESPONSIVOS ===== */
+QFrame {
+    border-radius: 12px;
+}
+
+QFrame[class="card"] {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 8px;
+}
+
+/* ===== CARDS DE MÉTRICAS ===== */
+QFrame#metricFrame {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+}
+
+QFrame#metricFrame:hover {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* ===== BARRA DE PROGRESSO ===== */
+QFrame#progressBar {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+QFrame#progressBar QFrame {
+    background: linear-gradient(90deg, rgba(73, 65, 206, 0.8), rgba(93, 31, 176, 0.8));
+    border-radius: 5px;
+}
+
+/* ===== BOTÕES DO MENU ===== */
+QPushButton#menuOptionBtn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px 10px;
+    text-align: left;
+    border-radius: 8px;
+}
+
+QPushButton#menuOptionBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+QPushButton#closeAppBtn {
+    background: transparent;
+    border: none;
+    color: #FF3B30;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px 10px;
+    text-align: left;
+    border-radius: 8px;
+}
+
+QPushButton#closeAppBtn:hover {
+    background: rgba(255, 59, 48, 0.1);
+    border-radius: 8px;
+}
+
+/* ===== LISTAS RESPONSIVAS ===== */
+QListWidget, QTreeWidget {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 1.0);
+    font-size: 12px;
+}
+
+QListWidget::item, QTreeWidget::item {
+    padding: 6px;
+    border-radius: 8px;
+}
+
+QListWidget::item:selected, QTreeWidget::item:selected {
+    background: rgba(73, 65, 206, 0.6);
+}
+
+QListWidget::item:hover, QTreeWidget::item:hover {
+    background: rgba(73, 65, 206, 0.3);
+}

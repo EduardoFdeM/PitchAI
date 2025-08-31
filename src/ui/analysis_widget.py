@@ -324,7 +324,7 @@ class AnalysisWidget(QWidget):
         transcription_layout.setSpacing(15)
         
         # Título da transcrição
-        transcription_title = QLabel("👤 Transcription Feed")
+        transcription_title = QLabel("Transcription Feed")
         transcription_title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
         
         transcription_layout.addWidget(transcription_title)
@@ -355,7 +355,7 @@ class AnalysisWidget(QWidget):
         # Header do sentimento
         sentiment_header = QHBoxLayout()
         
-        sentiment_title = QLabel("📊 Sentiment Analysis")
+        sentiment_title = QLabel("Sentiment Analysis")
         sentiment_title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
         
         sentiment_header.addWidget(sentiment_title)

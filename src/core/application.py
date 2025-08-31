@@ -22,7 +22,7 @@ from .cache_manager import CacheManager, cache_result
 from ui.main_window import MainWindow
 from ai.onnx_manager import ONNXManager
 from audio.capture import AudioCapture
-from src.data.database import DatabaseManager
+from data.database import DatabaseManager
 from .dashboard_service import DashboardService
 
 
@@ -127,8 +127,8 @@ class PitchAIApp(QObject):
     @handle_errors(severity=ErrorSeverity.HIGH, category=ErrorCategory.DATABASE, retry=True)
     def _initialize_database(self):
         """Inicializar gerenciador de banco de dados."""
-        self.database = DatabaseManager(self.config)
-        self.database.initialize()
+        db_path = str(self.config.data_dir / "pitchai.db")
+        self.database = DatabaseManager(db_path)
         self.logger.info("Banco de dados inicializado")
     
     @handle_errors(severity=ErrorSeverity.HIGH, category=ErrorCategory.AI_MODEL, retry=True)

@@ -13,7 +13,7 @@ import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass
-from src.data.database import DatabaseManager
+from data.database import DatabaseManager
 # DAOMentor removido - funcionalidade será implementada posteriormente
 
 
