@@ -62,10 +62,10 @@ class SummaryWidget(QWidget):
         # Botões de Ação
         action_layout = QHBoxLayout()
         action_layout.addStretch()
-        export_pdf_button = QPushButton("📄 Export as PDF")
+        export_pdf_button = QPushButton("Export as PDF")
         export_pdf_button.setObjectName("actionButton")
         
-        save_button = QPushButton("💾 Save to History")
+        save_button = QPushButton("Save to History")
         save_button.setObjectName("actionButton")
         
         action_layout.addWidget(export_pdf_button)
@@ -77,27 +77,60 @@ class SummaryWidget(QWidget):
         self._apply_styles()
 
     def _populate_with_example_data(self):
-        """Preencher com dados de exemplo."""
-        # Action Items
-        self.summary_layout.addWidget(self._create_section_header("Action Items"))
-        action_items = [
-            "Enviar proposta técnica (até 25/07)",
-            "Agendar demo técnica com a equipe de TI",
-            "Incluir case de sucesso da Empresa X na proposta",
-        ]
-        for item in action_items:
-            self.summary_layout.addWidget(self._create_list_item(item, checked=True))
+        """Preencher com dados reais do banco de dados."""
+        try:
+            from data.database import DatabaseManager
             
-        # Key Topics
-        self.summary_layout.addWidget(self._create_section_header("Key Topics"))
-        key_topics = [
-            "Preocupação principal: integração com sistema legado",
-            "Budget aprovado: R$ 50-80k",
-            "Timeline: implementação desejada para Q3",
-            "Necessidade de suporte 24/7",
-        ]
-        for topic in key_topics:
-            self.summary_layout.addWidget(self._create_list_item(topic, checked=False))
+            # Conectar ao banco
+            db_path = "data/pitchai.db"
+            db = DatabaseManager(db_path)
+            
+            # Buscar resumo real da chamada atual
+            if hasattr(self, 'current_call_id') and self.current_call_id:
+                cursor = db.connection.execute("""
+                    SELECT summary, action_items, key_topics 
+                    FROM call 
+                    WHERE id = ?
+                """, (self.current_call_id,))
+                
+                call_data = cursor.fetchone()
+                
+                if call_data and call_data['summary']:
+                    # Action Items
+                    self.summary_layout.addWidget(self._create_section_header("Action Items"))
+                    if call_data['action_items']:
+                        action_items = call_data['action_items'].split('|')
+                        for item in action_items:
+                            if item.strip():
+                                self.summary_layout.addWidget(self._create_list_item(item.strip(), checked=True))
+                    else:
+                        self.summary_layout.addWidget(self._create_list_item("Nenhuma ação definida", checked=False))
+                    
+                    # Key Topics
+                    self.summary_layout.addWidget(self._create_section_header("Key Topics"))
+                    if call_data['key_topics']:
+                        key_topics = call_data['key_topics'].split('|')
+                        for topic in key_topics:
+                            if topic.strip():
+                                self.summary_layout.addWidget(self._create_list_item(topic.strip(), checked=False))
+                    else:
+                        self.summary_layout.addWidget(self._create_list_item("Nenhum tópico identificado", checked=False))
+                else:
+                    # Dados padrão se não houver resumo
+                    self.summary_layout.addWidget(self._create_section_header("Action Items"))
+                    self.summary_layout.addWidget(self._create_list_item("Aguardando análise da IA...", checked=False))
+                    
+                    self.summary_layout.addWidget(self._create_section_header("Key Topics"))
+                    self.summary_layout.addWidget(self._create_list_item("Aguardando identificação de tópicos...", checked=False))
+                    
+        except Exception as e:
+            print(f"❌ Erro ao carregar resumo: {e}")
+            # Fallback para dados padrão
+            self.summary_layout.addWidget(self._create_section_header("Action Items"))
+            self.summary_layout.addWidget(self._create_list_item("Erro ao carregar dados", checked=False))
+            
+            self.summary_layout.addWidget(self._create_section_header("Key Topics"))
+            self.summary_layout.addWidget(self._create_list_item("Erro ao carregar dados", checked=False))
             
         self.summary_layout.addStretch()
 
@@ -108,7 +141,13 @@ class SummaryWidget(QWidget):
         font.setPointSize(16)
         font.setWeight(QFont.Weight.Bold)
         label.setFont(font)
-        label.setStyleSheet("color: #88C0D0; margin-top: 15px; margin-bottom: 5px;")
+        
+        # Aplicar cor roxa para "Action Items" e "Key Topics", manter azul para outros
+        if text in ["Action Items", "Key Topics"]:
+            label.setStyleSheet("color: rgba(73, 65, 206, 0.8); margin-top: 15px; margin-bottom: 5px;")
+        else:
+            label.setStyleSheet("color: #88C0D0; margin-top: 15px; margin-bottom: 5px;")
+        
         return label
 
     def _create_list_item(self, text: str, checked: bool) -> QWidget:
@@ -117,14 +156,11 @@ class SummaryWidget(QWidget):
         layout = QHBoxLayout(widget)
         layout.setContentsMargins(10, 5, 10, 5)
         
-        icon = "✅" if checked else "⚪"
-        icon_label = QLabel(icon)
-        
+        # Remover emojis, usar apenas texto
         text_label = QLabel(text)
         text_label.setWordWrap(True)
         text_label.setStyleSheet("color: #D8DEE9; font-size: 14px;")
         
-        layout.addWidget(icon_label)
         layout.addWidget(text_label, 1)
         
         return widget

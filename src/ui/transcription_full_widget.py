@@ -23,6 +23,9 @@ class TranscriptionFullWidget(QWidget):
         self.transcription_text = transcription_text
         self._setup_ui()
         
+        # Conectar ao sinal de atualização em tempo real
+        self.real_time_updates = []
+        
     def _setup_ui(self):
         """Configurar interface da transcrição completa."""
         # Layout principal
@@ -43,7 +46,7 @@ class TranscriptionFullWidget(QWidget):
         header_layout.addStretch()
         
         # Título
-        title_label = QLabel("📝 Transcrição Completa")
+        title_label = QLabel("Transcrição Completa")
         title_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         
         header_layout.addWidget(title_label)
@@ -86,6 +89,36 @@ class TranscriptionFullWidget(QWidget):
             new_text = current_text + "\n\n" + text
         else:
             new_text = text
+        self.transcription_area.setText(new_text)
+        
+        # Rolar para o final
+        scrollbar = self.transcription_area.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+    
+    def add_real_time_transcription(self, text, speaker_id="vendor"):
+        """Adicionar transcrição em tempo real com identificação de falante."""
+        from PyQt6.QtCore import QDateTime
+        
+        timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
+        
+        # Determinar nome do falante
+        if speaker_id == "vendor":
+            name = "Vendedor"
+        else:
+            name = "Cliente"
+        
+        # Criar linha de transcrição
+        transcription_line = f"[{timestamp}] {name}: {text}"
+        
+        # Adicionar à lista de atualizações
+        self.real_time_updates.append(transcription_line)
+        
+        # Atualizar a área de transcrição
+        current_text = self.transcription_area.toPlainText()
+        if current_text:
+            new_text = current_text + "\n\n" + transcription_line
+        else:
+            new_text = transcription_line
         self.transcription_area.setText(new_text)
         
         # Rolar para o final

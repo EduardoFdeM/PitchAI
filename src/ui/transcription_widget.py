@@ -26,7 +26,7 @@ class TranscriptionWidget(QWidget):
         layout = QVBoxLayout(self)
         
         # Header
-        header_label = QLabel("🎤 Transcrição em Tempo Real")
+        header_label = QLabel("Transcrição em Tempo Real")
         header_label.setObjectName("sectionHeader")
         header_label.setStyleSheet("""
             QLabel#sectionHeader {
@@ -63,51 +63,77 @@ class TranscriptionWidget(QWidget):
         self._add_example_content()
     
     def _add_example_content(self):
-        """Adicionar conteúdo de exemplo."""
-        example_content = """
+        """Adicionar conteúdo inicial vazio."""
+        initial_content = """
 <div style='color: #88C0D0; font-weight: bold; margin-bottom: 10px;'>
-    [15:30:12] 🔵 Vendedor
+    Aguardando transcrição...
 </div>
 <div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
-    Olá! Obrigado por aceitar nossa reunião hoje. Como posso ajudá-lo com a solução de CRM?
-</div>
-
-<div style='color: #D08770; font-weight: bold; margin-bottom: 10px;'>
-    [15:30:45] 🟠 Cliente
-</div>
-<div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
-    Olá! Estamos avaliando opções, mas estou preocupado com o preço...
-    <span style='color: #BF616A; font-weight: bold;'>[💡 OBJEÇÃO DETECTADA]</span>
-</div>
-
-<div style='color: #88C0D0; font-weight: bold; margin-bottom: 10px;'>
-    [15:31:02] 🔵 Vendedor
-</div>
-<div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
-    Entendo perfeitamente sua preocupação. Vamos falar sobre o ROI que nossos clientes têm visto...
+    A transcrição aparecerá aqui quando você começar a falar.
 </div>
         """
-        self.transcription_area.setHtml(example_content)
+        self.transcription_area.setHtml(initial_content)
+    
+    def load_real_transcription(self, call_id: str):
+        """Carregar transcrição real do banco de dados."""
+        try:
+            from data.database import DatabaseManager
+            
+            # Conectar ao banco
+            db_path = "data/pitchai.db"
+            db = DatabaseManager(db_path)
+            
+            # Buscar transcrição real
+            cursor = db.connection.execute("""
+                SELECT speaker_id, text, timestamp 
+                FROM transcription 
+                WHERE call_id = ? 
+                ORDER BY timestamp ASC
+            """, (call_id,))
+            
+            transcriptions = cursor.fetchall()
+            
+            if transcriptions:
+                content = ""
+                for trans in transcriptions:
+                    timestamp = trans['timestamp']
+                    speaker = "Vendedor" if trans['speaker_id'] == "vendor" else "Cliente"
+                    text = trans['text']
+                    
+                    content += f"""
+<div style='color: #88C0D0; font-weight: bold; margin-bottom: 10px;'>
+    [{timestamp}] {speaker}
+</div>
+<div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
+    {text}
+</div>
+                    """
+                
+                self.transcription_area.setHtml(content)
+            else:
+                self._add_example_content()
+                
+        except Exception as e:
+            print(f"❌ Erro ao carregar transcrição: {e}")
+            self._add_example_content()
     
     @pyqtSlot(str, str)
     def add_transcription(self, text: str, speaker_id: str):
         """Adicionar nova transcrição."""
         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
         
-        # Determinar cor e ícone do falante
+        # Determinar cor e nome do falante
         if speaker_id == "vendor":
             color = "#88C0D0"
-            icon = "🔵"
             name = "Vendedor"
         else:
             color = "#D08770" 
-            icon = "🟠"
             name = "Cliente"
         
         # Criar HTML para nova transcrição
         html_content = f"""
         <div style='color: {color}; font-weight: bold; margin-bottom: 10px; margin-top: 15px;'>
-            [{timestamp}] {icon} {name}
+            [{timestamp}] {name}
         </div>
         <div style='color: #ECEFF4; margin-bottom: 15px; margin-left: 20px;'>
             {text}

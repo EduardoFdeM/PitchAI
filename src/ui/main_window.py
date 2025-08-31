@@ -265,7 +265,7 @@ class MainWindow(QMainWindow):
         self.analysis_widget = AnalysisWidget(self.config, self.app_instance)
         self.chat_widget = ChatWidget()
         self.transcription_full_widget = TranscriptionFullWidget()
-        self.settings_widget = SettingsWidget()
+        self.settings_widget = SettingsWidget(self.app_instance)
         self.history_widget = HistoryWidget()
         self.summary_widget = SummaryWidget()
         

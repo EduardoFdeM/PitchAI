@@ -21,7 +21,7 @@ class OpportunitiesWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
         
-        title_label = QLabel("🎯 Oportunidades")
+        title_label = QLabel("Oportunidades")
         font = QFont()
         font.setPointSize(14)
         font.setWeight(QFont.Weight.Bold)
