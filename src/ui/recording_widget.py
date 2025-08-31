@@ -180,59 +180,8 @@ class RecordingWidget(QWidget):
     
     def _apply_styles(self):
         """Aplicar estilos liquid glass."""
-        style = """
-        QWidget#recordingGlass {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(175, 177, 240, 0.06), 
-                stop: 0.5 rgba(73, 65, 206, 0.08),
-                stop: 1 rgba(93, 31, 176, 0.06));
-            border: 1px solid rgba(175, 177, 240, 0.15);
-            border-radius: 0px;
-        }
-        
-        QPushButton#menuToggle {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(255, 255, 255, 0.15), 
-                stop: 1 rgba(255, 255, 255, 0.08));
-            border: 1px solid rgba(175, 177, 240, 0.25);
-            border-radius: 20px;
-            color: rgba(175, 177, 240, 0.9);
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        QPushButton#menuToggle:hover {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(255, 255, 255, 0.25), 
-                stop: 1 rgba(255, 255, 255, 0.15));
-        }
-        
-        QPushButton#blurActionButton {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(175, 177, 240, 0.15), 
-                stop: 1 rgba(73, 65, 206, 0.12));
-            border: 2px solid rgba(175, 177, 240, 0.4);
-            border-radius: 30px;
-            color: rgba(175, 177, 240, 0.95);
-            font-size: 18px;
-            font-weight: bold;
-            backdrop-filter: blur(30px);
-        }
-        
-        QPushButton#blurActionButton:hover {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(175, 177, 240, 0.25), 
-                stop: 1 rgba(73, 65, 206, 0.20));
-            border: 2px solid rgba(175, 177, 240, 0.6);
-        }
-        
-        QPushButton#blurActionButton:pressed {
-            background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                stop: 0 rgba(93, 31, 176, 0.3), 
-                stop: 1 rgba(73, 65, 206, 0.4));
-        }
-        """
-        self.setStyleSheet(style)
+        # Estilos movidos para glassmorphism.qss
+        pass
     
     def _toggle_menu(self):
         """Alternar visibilidade do menu."""

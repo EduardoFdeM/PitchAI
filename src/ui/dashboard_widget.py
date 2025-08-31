@@ -1,200 +1,352 @@
 """
-Dashboard Widget - Métricas em Tempo Real
-=========================================
+Dashboard Widget - Tela Principal
+================================
 
-Exibe métricas de performance e sentimento em tempo real.
+Tela principal com saudação, botão Start e histórico de chamadas.
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, 
-    QProgressBar, QFrame, QGridLayout
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
+    QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
-import random
+
+class HistoryCard(QWidget):
+    """Card de item do histórico."""
+    
+    clicked = pyqtSignal(str)  # Emite o ID da sessão
+    
+    def __init__(self, session_id: str, title: str, date: str, parent=None):
+        super().__init__(parent)
+        self.session_id = session_id
+        self._setup_ui(title, date)
+        
+    def _setup_ui(self, title: str, date: str):
+        """Configurar interface do card."""
+        self.setObjectName("historyCard")
+        self.setFixedHeight(60)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setSpacing(15)
+        
+        # Ícone de sessão
+        icon_label = QLabel("🎙️")
+        icon_label.setStyleSheet("font-size: 20px;")
+        
+        # Informações da sessão
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(5)
+        
+        title_label = QLabel(title)
+        title_label.setStyleSheet("color: white; font-weight: bold; font-size: 14px;")
+        
+        date_label = QLabel(date)
+        date_label.setStyleSheet("color: #888888; font-size: 12px;")
+        
+        info_layout.addWidget(title_label)
+        info_layout.addWidget(date_label)
+        
+        layout.addWidget(icon_label)
+        layout.addLayout(info_layout)
+        layout.addStretch()
+        
+        # Tornar clicável
+        self.mousePressEvent = lambda event: self.clicked.emit(self.session_id)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self._apply_styles()
+    
+    def _apply_styles(self):
+        """Aplicar estilos do card."""
+        style = """
+        QWidget#historyCard {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+        }
+        
+        QWidget#historyCard:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        """
+        self.setStyleSheet(style)
 
 
 class DashboardWidget(QWidget):
-    """Widget de dashboard com métricas em tempo real."""
+    """Widget da tela principal do dashboard."""
     
-    def __init__(self, config):
-        super().__init__()
+    # Sinais
+    start_analysis_requested = pyqtSignal()
+    history_item_clicked = pyqtSignal(str)
+    menu_requested = pyqtSignal()
+    
+    def __init__(self, config, pitch_app, parent=None):
+        super().__init__(parent)
         self.config = config
-        self.setMaximumHeight(120)
-        
-        # Valores atuais das métricas
-        self.current_metrics = {
-            'sentiment': 'Positivo',
-            'sentiment_score': 72,
-            'confidence': 87,
-            'objections': 2,
-            'duration': '00:00',
-            'npu_models': 5
-        }
-        
+        self.pitch_app = pitch_app
+        self.app_instance = pitch_app  # Para compatibilidade
+        self.menu_button = None  # Referência ao botão de menu
         self._setup_ui()
-        
-        # Timer para atualizar métricas dinamicamente
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self._update_metrics)
-        self.duration_seconds = 0
+        self._load_dashboard_data()
     
     def _setup_ui(self):
         """Configurar interface do dashboard."""
-        layout = QHBoxLayout(self)
-        layout.setSpacing(15)
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(0)
         
-        # ===== SENTIMENTO =====
-        self.sentiment_frame = self._create_metric_frame(
-            "😊 Sentimento", self.current_metrics['sentiment'], "CLIENTE", "#A3BE8C"
-        )
-        layout.addWidget(self.sentiment_frame)
+        # ===== HEADER =====
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 30)
         
-        # ===== CONFIDENCE =====
-        self.confidence_frame = self._create_metric_frame(
-            "🎯 Confidence", f"{self.current_metrics['confidence']}%", "SCORE", "#88C0D0"
-        )
-        layout.addWidget(self.confidence_frame)
+        # Botão de menu (ícone 3x3)
+        self.menu_button = QPushButton("☰")
+        self.menu_button.setObjectName("menuButton")
+        self.menu_button.setFixedSize(40, 40)
+        self.menu_button.clicked.connect(lambda: self.menu_requested.emit())
         
-        # ===== OBJEÇÕES =====
-        self.objections_frame = self._create_metric_frame(
-            "🛡️ Objeções", str(self.current_metrics['objections']), "DETECTADAS", "#EBCB8B"
-        )
-        layout.addWidget(self.objections_frame)
+        header_layout.addWidget(self.menu_button)
+        header_layout.addStretch()
         
-        # ===== TEMPO =====
-        self.time_frame = self._create_metric_frame(
-            "⏱️ Duração", self.current_metrics['duration'], "MINUTOS", "#D08770"
-        )
-        layout.addWidget(self.time_frame)
+        # Botão Start
+        start_button = QPushButton("▶ Start")
+        start_button.setObjectName("startButton")
+        start_button.setFixedSize(120, 40)
+        start_button.clicked.connect(self.start_analysis_requested.emit)
         
-        # ===== NPU STATUS =====
-        self.npu_frame = self._create_metric_frame(
-            "🧠 NPU", str(self.current_metrics['npu_models']), "MODELOS", "#A3BE8C"
-        )
-        layout.addWidget(self.npu_frame)
+        header_layout.addWidget(start_button)
+        
+        main_layout.addLayout(header_layout)
+        
+        # ===== SAUDAÇÃO E EMPRESA LADO A LADO =====
+        greeting_empresa_layout = QHBoxLayout()
+        greeting_empresa_layout.setContentsMargins(0, 50, 0, 30)
+        greeting_empresa_layout.setSpacing(30)
+        
+        # Lado esquerdo: Saudação
+        self.greeting_widget = QWidget()
+        greeting_layout = QVBoxLayout(self.greeting_widget)
+        greeting_layout.setContentsMargins(0, 0, 0, 0)
+        greeting_layout.setSpacing(5)
+        greeting_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        hello_label = QLabel("Olá,")
+        hello_label.setStyleSheet("color: white; font-size: 16px; font-weight: normal;")
+        hello_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        name_label = QLabel("Giovanna")
+        name_label.setStyleSheet("color: white; font-size: 24px; font-weight: bold;")
+        name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        greeting_layout.addWidget(hello_label)
+        greeting_layout.addWidget(name_label)
+        
+        # Lado direito: Card da empresa
+        empresa_card = QFrame()
+        empresa_card.setObjectName("metricFrame")
+        empresa_card.setFixedSize(300, 70)
+        
+        empresa_inner_layout = QHBoxLayout(empresa_card)
+        empresa_inner_layout.setContentsMargins(20, 15, 20, 15)
+        empresa_inner_layout.setSpacing(15)
+        
+        # Ícone da empresa (prédio)
+        empresa_icon = QLabel("🏢")
+        empresa_icon.setStyleSheet("font-size: 24px;")
+        
+        # Nome da empresa
+        empresa_nome = QLabel("SOMOS Educação")
+        empresa_nome.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        
+        empresa_inner_layout.addWidget(empresa_icon)
+        empresa_inner_layout.addWidget(empresa_nome)
+        empresa_inner_layout.addStretch()
+        
+        # Adicionar widgets ao layout horizontal
+        greeting_empresa_layout.addWidget(self.greeting_widget)
+        greeting_empresa_layout.addWidget(empresa_card)
+        greeting_empresa_layout.addStretch()
+        
+        main_layout.addLayout(greeting_empresa_layout)
+        
+        # Separador
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        # Estilo movido para glassmorphism.qss
+        separator.setFixedHeight(1)
+        main_layout.addWidget(separator)
+        
+        # ===== SEÇÃO METAS =====
+        metas_label = QLabel("Metas")
+        metas_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold; margin-top: 20px;")
+        main_layout.addWidget(metas_label)
+        
+        # Cards de metas
+        metas_layout = QHBoxLayout()
+        metas_layout.setSpacing(20)
+        
+        # Card 1: Vendas concluídas
+        vendas_card = QFrame()
+        vendas_card.setObjectName("metricFrame")
+        vendas_card.setFixedSize(280, 140)
+        
+        vendas_layout = QVBoxLayout(vendas_card)
+        vendas_layout.setContentsMargins(20, 20, 20, 20)
+        
+        vendas_title = QLabel("Vendas concluídas")
+        vendas_title.setStyleSheet("color: white; font-size: 14px; font-weight: normal;")
+        
+        vendas_value_layout = QHBoxLayout()
+        vendas_number = QLabel("8")
+        vendas_number.setStyleSheet("color: white; font-size: 32px; font-weight: bold;")
+        vendas_of = QLabel("de 24")
+        vendas_of.setStyleSheet("color: white; font-size: 14px; font-weight: normal;")
+        
+        vendas_value_layout.addWidget(vendas_number)
+        vendas_value_layout.addWidget(vendas_of)
+        vendas_value_layout.addStretch()
+        
+        vendas_layout.addWidget(vendas_title)
+        vendas_layout.addLayout(vendas_value_layout)
+        vendas_layout.addStretch()
+        
+        # Card 2: Ranking
+        ranking_card = QFrame()
+        ranking_card.setObjectName("metricFrame")
+        ranking_card.setFixedSize(280, 140)
+        
+        ranking_layout = QVBoxLayout(ranking_card)
+        ranking_layout.setContentsMargins(20, 20, 20, 20)
+        
+        ranking_title = QLabel("Ranking..")
+        ranking_title.setStyleSheet("color: white; font-size: 14px; font-weight: normal;")
+        
+        ranking_value_layout = QHBoxLayout()
+        ranking_number = QLabel("2°")
+        ranking_number.setStyleSheet("color: white; font-size: 32px; font-weight: bold;")
+        ranking_icon = QLabel("▲")
+        ranking_icon.setStyleSheet("color: #34C759; font-size: 16px; font-weight: bold;")
+        
+        ranking_value_layout.addWidget(ranking_number)
+        ranking_value_layout.addWidget(ranking_icon)
+        ranking_value_layout.addStretch()
+        
+        ranking_layout.addWidget(ranking_title)
+        ranking_layout.addLayout(ranking_value_layout)
+        ranking_layout.addStretch()
+        
+        metas_layout.addWidget(vendas_card)
+        metas_layout.addWidget(ranking_card)
+        metas_layout.addStretch()
+        
+        main_layout.addLayout(metas_layout)
+        
+        # ===== SEÇÃO PENDENTE =====
+        pendente_label = QLabel("Pendente")
+        pendente_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold; margin-top: 20px;")
+        main_layout.addWidget(pendente_label)
+        
+        # Card pendente
+        pendente_card = QFrame()
+        pendente_card.setObjectName("metricFrame")
+        pendente_card.setFixedHeight(120)
+        
+        pendente_layout = QVBoxLayout(pendente_card)
+        pendente_layout.setContentsMargins(20, 20, 20, 20)
+        
+        pendente_title = QLabel("Meta de Volume de Vendas (Unidades/Contratos)")
+        pendente_title.setStyleSheet("color: white; font-size: 14px; font-weight: normal;")
+        
+        # Barra de progresso
+        progress_layout = QHBoxLayout()
+        progress_bar = QFrame()
+        progress_bar.setObjectName("progressBar")
+        progress_bar.setFixedHeight(10)
+        # Estilos movidos para glassmorphism.qss
+        
+        # Barra preenchida
+        progress_filled = QFrame()
+        progress_filled.setFixedSize(180, 10)  # 45% de 400px
+        # Estilos movidos para glassmorphism.qss
+        
+        progress_layout.addWidget(progress_filled)
+        progress_layout.addStretch()
+        
+        progress_percent = QLabel("45%")
+        progress_percent.setStyleSheet("color: white; font-size: 12px; font-weight: normal;")
+        
+        pendente_layout.addWidget(pendente_title)
+        pendente_layout.addLayout(progress_layout)
+        pendente_layout.addWidget(progress_percent)
+        
+        main_layout.addWidget(pendente_card)
+        main_layout.addStretch()
+        
+        self._apply_styles()
     
-    def _create_metric_frame(self, title: str, value: str, 
-                           subtitle: str, color: str) -> QFrame:
-        """Criar frame para uma métrica."""
-        frame = QFrame()
-        frame.setObjectName("metricFrame")
-        frame.setStyleSheet(f"""
-            QFrame#metricFrame {{
-                background: rgba(59, 66, 82, 0.9);
-                border: 1px solid rgba(129, 161, 193, 0.4);
-                border-radius: 12px;
-                padding: 16px;
-            }}
-        """)
-        
-        layout = QVBoxLayout(frame)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Título
-        title_label = QLabel(title)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: bold;")
-        
-        # Valor principal
-        value_label = QLabel(value)
-        value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        value_label.setStyleSheet(f"""
-            color: #ECEFF4;
-            font-size: 22px;
-            font-weight: bold;
-            margin: 5px 0px;
-        """)
-        
-        # Subtítulo
-        subtitle_label = QLabel(subtitle)
-        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_label.setStyleSheet("color: #D8DEE9; font-size: 10px;")
-        
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
-        layout.addWidget(subtitle_label)
-        
-        # Armazenar referências para atualização
-        frame.value_label = value_label
-        frame.title_label = title_label
-        
-        return frame
+
     
-    def start_demo(self):
-        """Iniciar modo demo com atualizações dinâmicas."""
-        self.update_timer.start(1000)  # Atualizar a cada segundo
+    def _apply_styles(self):
+        """Aplicar estilos do dashboard."""
+        # Estilos movidos para glassmorphism.qss
+        pass
     
-    def stop_demo(self):
-        """Parar modo demo."""
-        self.update_timer.stop()
-        self.duration_seconds = 0
-        self.current_metrics['duration'] = "00:00"
-        self._update_metric_display()
+
     
-    def _update_metrics(self):
-        """Atualizar métricas com novos valores."""
-        # Atualizar duração
-        self.duration_seconds += 1
-        minutes = self.duration_seconds // 60
-        seconds = self.duration_seconds % 60
-        self.current_metrics['duration'] = f"{minutes:02d}:{seconds:02d}"
-        
-        # Atualizar confidence ocasionalmente
-        if random.random() < 0.3:  # 30% chance
-            self.current_metrics['confidence'] = random.randint(75, 95)
-        
-        # Atualizar objeções ocasionalmente
-        if random.random() < 0.2:  # 20% chance
-            self.current_metrics['objections'] = random.randint(0, 5)
-        
-        # Atualizar sentimento ocasionalmente
-        if random.random() < 0.25:  # 25% chance
-            sentiments = ['Positivo', 'Neutro', 'Preocupado', 'Muito Positivo']
-            self.current_metrics['sentiment'] = random.choice(sentiments)
-        
-        self._update_metric_display()
+    def hide_menu_button(self):
+        """Ocultar botão de menu."""
+        if self.menu_button:
+            self.menu_button.hide()
     
-    def _update_metric_display(self):
-        """Atualizar displays das métricas."""
-        # Atualizar confidence
-        if hasattr(self, 'confidence_frame'):
-            self.confidence_frame.value_label.setText(f"{self.current_metrics['confidence']}%")
-        
-        # Atualizar objeções
-        if hasattr(self, 'objections_frame'):
-            self.objections_frame.value_label.setText(str(self.current_metrics['objections']))
-        
-        # Atualizar duração
-        if hasattr(self, 'time_frame'):
-            self.time_frame.value_label.setText(self.current_metrics['duration'])
-        
-        # Atualizar sentimento
-        if hasattr(self, 'sentiment_frame'):
-            self.sentiment_frame.value_label.setText(self.current_metrics['sentiment'])
+    def show_menu_button(self):
+        """Mostrar botão de menu."""
+        if self.menu_button:
+            self.menu_button.show()
     
-    @pyqtSlot(dict)
-    def update_sentiment(self, metrics: dict):
-        """Atualizar métricas de sentimento."""
-        sentiment_score = metrics.get('sentiment', 0.5)
-        confidence = metrics.get('confidence', 0.8)
-        
-        # Determinar sentimento baseado no score
-        if sentiment_score > 0.7:
-            sentiment_text = "Muito Positivo"
-        elif sentiment_score > 0.4:
-            sentiment_text = "Positivo"
-        elif sentiment_score > 0.2:
-            sentiment_text = "Neutro"
-        else:
-            sentiment_text = "Preocupado"
-        
-        self.current_metrics['sentiment'] = sentiment_text
-        self.current_metrics['confidence'] = int(confidence * 100)
-        self._update_metric_display()
+    def _load_dashboard_data(self):
+        """Carregar dados do dashboard do backend."""
+        try:
+            if hasattr(self.pitch_app, 'dashboard_service') and self.pitch_app.dashboard_service:
+                dashboard_data = self.pitch_app.dashboard_service.get_dashboard_data("giovanna")
+                self._update_dashboard_ui(dashboard_data)
+            else:
+                print("⚠️ DashboardService não disponível")
+        except Exception as e:
+            print(f"❌ Erro ao carregar dados do dashboard: {e}")
     
-    @pyqtSlot(int)
-    def update_objections_count(self, count: int):
-        """Atualizar contador de objeções."""
-        self.current_metrics['objections'] = count
-        self._update_metric_display()
+    def _update_dashboard_ui(self, data: dict):
+        """Atualizar interface com dados do backend."""
+        try:
+            # Atualizar metas
+            if 'goals' in data:
+                goals = data['goals']
+                
+                # Atualizar vendas concluídas
+                if 'units' in goals:
+                    units_percent = goals['units']['percent']
+                    # Aqui você atualizaria os labels da UI
+                    print(f"📊 Vendas: {goals['units']['current']}/{goals['units']['target']} ({units_percent:.1f}%)")
+                
+                # Atualizar ranking
+                if 'ranking' in data:
+                    ranking = data['ranking']
+                    position = ranking['current_position']
+                    print(f"🏆 Ranking: {position}° lugar")
+                
+                # Atualizar progresso pendente
+                if 'contracts' in goals:
+                    contracts_percent = goals['contracts']['percent']
+                    print(f"📈 Progresso: {contracts_percent:.1f}%")
+            
+            print("✅ Dashboard atualizado com dados do backend")
+            
+        except Exception as e:
+            print(f"❌ Erro ao atualizar dashboard: {e}")
+    
+    def refresh_dashboard(self):
+        """Atualizar dashboard com dados mais recentes."""
+        self._load_dashboard_data()

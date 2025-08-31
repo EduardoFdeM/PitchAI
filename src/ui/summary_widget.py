@@ -131,34 +131,5 @@ class SummaryWidget(QWidget):
 
     def _apply_styles(self):
         """Aplicar estilos."""
-        self.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-            }
-            QScrollArea#summaryScrollArea {
-                border: none;
-            }
-            QPushButton#secondaryButton {
-                background: rgba(136, 192, 208, 0.3);
-                border: 1px solid rgba(136, 192, 208, 0.5);
-                border-radius: 6px;
-                color: #ECEFF4;
-                font-size: 12px;
-                padding: 8px 15px;
-            }
-            QPushButton#secondaryButton:hover {
-                background: rgba(136, 192, 208, 0.5);
-            }
-            QPushButton#actionButton {
-                background: rgba(163, 190, 140, 0.3);
-                border: 1px solid rgba(163, 190, 140, 0.5);
-                border-radius: 6px;
-                color: #ECEFF4;
-                font-size: 13px;
-                padding: 10px 18px;
-                font-weight: bold;
-            }
-            QPushButton#actionButton:hover {
-                background: rgba(163, 190, 140, 0.5);
-            }
-        """)
+        # Estilos movidos para glassmorphism.qss
+        pass

@@ -34,20 +34,7 @@ class NotesWidget(QWidget):
         layout.addWidget(title_label)
         layout.addWidget(self.notes_editor)
         
-        self.setStyleSheet("""
-            QWidget#notesWidget {
-                background: rgba(46, 52, 64, 0.7);
-                border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            QTextEdit {
-                background: rgba(30, 35, 45, 0.8);
-                border-radius: 8px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                color: #ECEFF4;
-                padding: 10px;
-            }
-        """)
+        # Estilos movidos para glassmorphism.qss
         
     def show_notes(self):
         self.show()

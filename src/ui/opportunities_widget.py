@@ -33,13 +33,7 @@ class OpportunitiesWidget(QWidget):
         layout.addWidget(title_label)
         layout.addWidget(self.content_label)
         
-        self.setStyleSheet("""
-            QWidget#opportunitiesWidget {
-                background: rgba(46, 52, 64, 0.7);
-                border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-        """)
+        # Estilos movidos para glassmorphism.qss
 
     def set_opportunity(self, text):
         self.content_label.setText(text)
