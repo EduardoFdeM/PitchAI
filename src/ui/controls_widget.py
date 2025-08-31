@@ -101,73 +101,8 @@ class ControlsWidget(QWidget):
     
     def _apply_styles(self):
         """Aplicar estilos aos controles."""
-        style = """
-        QFrame#controlFrame {
-            background: rgba(76, 86, 106, 0.6);
-            border: 1px solid rgba(129, 161, 193, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-        }
-        
-        QPushButton#mainButton {
-            background: rgba(163, 190, 140, 0.8);
-            border: 2px solid rgba(163, 190, 140, 1.0);
-            border-radius: 8px;
-            color: #2E3440;
-            font-weight: bold;
-            font-size: 14px;
-            padding: 12px 20px;
-            min-width: 150px;
-        }
-        
-        QPushButton#mainButton:hover {
-            background: rgba(163, 190, 140, 1.0);
-        }
-        
-        QPushButton#mainButton:pressed {
-            background: rgba(143, 170, 120, 1.0);
-        }
-        
-        QPushButton#mainButton[recording="true"] {
-            background: rgba(191, 97, 106, 0.8);
-            border: 2px solid rgba(191, 97, 106, 1.0);
-            color: #ECEFF4;
-        }
-        
-        QPushButton#secondaryButton {
-            background: rgba(136, 192, 208, 0.3);
-            border: 1px solid rgba(136, 192, 208, 0.5);
-            border-radius: 6px;
-            color: #ECEFF4;
-            font-size: 12px;
-            padding: 8px 15px;
-            min-width: 100px;
-        }
-        
-        QPushButton#secondaryButton:hover {
-            background: rgba(136, 192, 208, 0.5);
-        }
-        
-        QPushButton#secondaryButton:disabled {
-            background: rgba(76, 86, 106, 0.3);
-            color: rgba(236, 239, 244, 0.5);
-            border-color: rgba(129, 161, 193, 0.2);
-        }
-        
-        QLabel#statusLabel {
-            color: #D8DEE9;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        QLabel#timeLabel {
-            color: #88C0D0;
-            font-size: 18px;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-        }
-        """
-        self.setStyleSheet(style)
+        # Estilos movidos para glassmorphism.qss
+        pass
     
     def _toggle_recording(self):
         """Alternar entre iniciar e parar gravação."""
