@@ -1,8 +1,9 @@
 """
-Whisper Transcription - Transcrição em Tempo Real
-================================================
+Whisper Transcription - Transcrição em Tempo Real (ONNX NPU)
+============================================================
 
-Módulo de transcrição usando Whisper otimizado para NPU.
+Módulo de transcrição em tempo real utilizando o pipeline do Whisper
+com modelos Encoder e Decoder ONNX otimizados para a NPU.
 """
 
 import logging
@@ -13,7 +14,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
 import onnxruntime as ort
 
 try:
-    from transformers import WhisperProcessor, WhisperForConditionalGeneration
+    from transformers import WhisperProcessor
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
@@ -27,11 +28,16 @@ except ImportError:
     logging.warning("⚠️ Librosa não disponível. Resampling limitado.")
 
 
-class WhisperTranscriptionThread(QThread):
-    """Thread para transcrição contínua."""
-    
-    transcription_ready = pyqtSignal(str, str, float)  # text, speaker_id, confidence
-    error_occurred = pyqtSignal(str)
+# Supondo que a classe ModelManager e AudioChunk estejam disponíveis
+# from ..core.contracts import AudioChunk (Exemplo de import)
+# from .model_manager import ModelManager (Exemplo de import)
+
+class WhisperASR(QObject):
+    """
+    Serviço de ASR (Automatic Speech Recognition) com Whisper ONNX.
+    Orquestra o pré-processamento, a execução do encoder-decoder e o pós-processamento.
+    """
+    transcription_ready = pyqtSignal(dict)  # Sinal emitido com o resultado da transcrição
     
     def __init__(self, config, audio_buffer, source="microphone", npu_manager=None):
         super().__init__()

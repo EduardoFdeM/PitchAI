@@ -386,7 +386,7 @@ class AudioCapture(QObject):
             # Log de métricas
             duration = time.time() - self.capture_start_time if self.capture_start_time else 0
             self.logger.info(f"⏹️ Captura parada (duração: {duration:.1f}s, "
-                           f"chunks: mic={self.chunks_received['microphone']}, "
+                           f"chunks: mic={self.chunks_received['mic']}, "
                            f"loopback={self.chunks_received['loopback']})")
             
         except Exception as e:

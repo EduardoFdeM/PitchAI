@@ -1,13 +1,23 @@
 {
-  "whisper_base": {
-    "path": "models/whisper_base.onnx",
+  "whisper_tiny_encoder": {
+    "path": "models/whisper_tiny/whisper_tiny-hfwhisperencoder-qualcomm_snapdragon_x_elite.bin",
     "ep": ["QNN", "CPU"],
-    "input": "audio_16k_mono",
+    "input": "audio_features",
     "quant": "int8_fp16",
-    "description": "Whisper Base para transcrição em tempo real",
+    "description": "Whisper Tiny Encoder para transcrição em tempo real (NPU)",
     "version": "1.0.0",
-    "size_mb": 39,
-    "latency_target_ms": 500
+    "size_mb": 30,
+    "latency_target_ms": 100
+  },
+  "whisper_tiny_decoder": {
+    "path": "models/whisper_tiny/whisper_tiny-hfwhisperdecoder-qualcomm_snapdragon_x_elite.bin",
+    "ep": ["QNN", "CPU"],
+    "input": "encoder_hidden_states",
+    "quant": "int8_fp16",
+    "description": "Whisper Tiny Decoder para transcrição em tempo real (NPU)",
+    "version": "1.0.0",
+    "size_mb": 45,
+    "latency_target_ms": 100
   },
   "distilbert_sentiment": {
     "path": "models/distilbert_sentiment.onnx",
