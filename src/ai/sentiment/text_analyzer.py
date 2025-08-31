@@ -29,19 +29,18 @@ class TextAnalyzer:
         self.model_manager = model_manager
         self.logger = logging.getLogger(__name__)
         
-        # Modelo ONNX para sentimento
-        self.sentiment_session = None
+        # Modelo de sentimento
+        self.sentiment_model = None
         self.tokenizer = None
         
-        # Cache de análise
-        self.sentiment_cache = {}
-        self.keyword_cache = {}
+        # Cache simples
+        self.cache = {}
         
         # Inicializar
         self._initialize_model()
     
     def _initialize_model(self):
-        """Inicializar modelo de sentimento."""
+        """Inicializar modelo de sentimento de texto."""
         try:
             if not ONNX_AVAILABLE:
                 self.logger.warning("ONNX não disponível, usando simulação")
@@ -49,8 +48,8 @@ class TextAnalyzer:
             
             # Tentar carregar via ModelManager
             if self.model_manager:
-                self.sentiment_session = self.model_manager.get_session("distilbert_sentiment")
-                if self.sentiment_session:
+                self.sentiment_model = self.model_manager.get_session("distilbert_sentiment")
+                if self.sentiment_model:
                     self.logger.info("✅ Modelo de sentimento carregado via ModelManager")
                     return
             
@@ -59,7 +58,7 @@ class TextAnalyzer:
             providers = ["QNNExecutionProvider", "CPUExecutionProvider"]
             
             try:
-                self.sentiment_session = ort.InferenceSession(model_path, providers=providers)
+                self.sentiment_model = ort.InferenceSession(model_path, providers=providers)
                 self.logger.info(f"✅ Modelo de sentimento carregado: {model_path}")
             except Exception as e:
                 self.logger.warning(f"⚠️ Erro ao carregar modelo: {e}")
@@ -74,11 +73,11 @@ class TextAnalyzer:
         
         # Verificar cache
         cache_key = text.lower().strip()
-        if cache_key in self.sentiment_cache:
-            return self.sentiment_cache[cache_key]
+        if cache_key in self.cache:
+            return self.cache[cache_key]
         
         try:
-            if self.sentiment_session:
+            if self.sentiment_model:
                 # Usar modelo ONNX
                 score = self._analyze_with_model(text)
             else:
@@ -86,7 +85,7 @@ class TextAnalyzer:
                 score = self._simulate_sentiment(text)
             
             # Cache resultado
-            self.sentiment_cache[cache_key] = score
+            self.cache[cache_key] = score
             
             return score
             
@@ -97,47 +96,12 @@ class TextAnalyzer:
     def _analyze_with_model(self, text: str) -> float:
         """Análise usando AnythingLLM."""
         try:
-            if not self.anythingllm_client:
-                return self._simulate_sentiment(text)
-            
-            # Prompt para análise de sentimento
-            system_prompt = (
-                "Você é um especialista em análise de sentimento. "
-                "Analise o texto e retorne APENAS um número entre -1 e +1, "
-                "onde -1 = muito negativo, 0 = neutro, +1 = muito positivo. "
-                "Exemplo: 0.8"
-            )
-            
-            user_prompt = f"Texto: '{text}'\n\nSentimento (-1 a +1):"
-            
-            # Configurar payload
-            payload = {
-                "model": self.anythingllm_client.default_model,
-                "temperature": 0.1,
-                "stream": False,
-                "max_tokens": 10,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ]
+            # TODO: Implementar análise de texto real
+            return {
+                "sentiment_score": 0.0,
+                "confidence": 0.0,
+                "keywords": []
             }
-            
-            # Fazer requisição
-            response = self.anythingllm_client._make_request(payload, stream=False)
-            
-            if response.status_code != 200:
-                return self._simulate_sentiment(text)
-            
-            # Processar resposta
-            data = response.json()
-            content = data['choices'][0]['message']['content'].strip()
-            
-            # Parsear número
-            try:
-                score = float(content)
-                return np.clip(score, -1.0, 1.0)
-            except ValueError:
-                return self._simulate_sentiment(text)
                 
         except Exception as e:
             self.logger.error(f"Erro na análise com AnythingLLM: {e}")
@@ -192,8 +156,8 @@ class TextAnalyzer:
         
         # Verificar cache
         cache_key = text.lower().strip()
-        if cache_key in self.keyword_cache:
-            return self.keyword_cache[cache_key]
+        if cache_key in self.cache:
+            return self.cache[cache_key]
         
         matches = []
         text_lower = text.lower()
@@ -219,7 +183,7 @@ class TextAnalyzer:
                 matches.append(keyword_match)
         
         # Cache resultado
-        self.keyword_cache[cache_key] = matches
+        self.cache[cache_key] = matches
         
         return matches
     
@@ -298,6 +262,5 @@ class TextAnalyzer:
     
     def clear_cache(self):
         """Limpar cache de análise."""
-        self.sentiment_cache.clear()
-        self.keyword_cache.clear()
-        self.logger.info("Cache de análise de texto limpo") 
+        self.cache.clear()
+        self.logger.info("Cache do TextAnalyzer limpo") 

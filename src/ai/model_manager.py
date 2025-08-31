@@ -98,7 +98,6 @@ class ModelManager:
         
         # Mapear providers do manifesto para ONNX Runtime
         provider_mapping = {
-            "QNN": "QNNExecutionProvider",
             "CPU": "CPUExecutionProvider",
             "DML": "DmlExecutionProvider",
             "CUDA": "CUDAExecutionProvider"
@@ -107,10 +106,7 @@ class ModelManager:
         for ep in model_entry.ep:
             onnx_provider = provider_mapping.get(ep, ep)
             if onnx_provider in available_providers:
-                if onnx_provider == "QNNExecutionProvider":
-                    providers.append((onnx_provider, {}))
-                else:
-                    providers.append(onnx_provider)
+                providers.append(onnx_provider)
                 self.logger.info(f"✅ Provider {ep} ({onnx_provider}) adicionado")
             else:
                 self.logger.warning(f"⚠️ Provider {ep} ({onnx_provider}) não disponível")

@@ -1,10 +1,9 @@
 """
-NPU Manager - Gerenciador da NPU Snapdragon
-===========================================
+ONNX Manager - Gerenciador de Modelos ONNX
+==========================================
 
-Coordena todos os modelos ONNX rodando na NPU para
-processamento simultâneo de áudio e análise.
-Integra com ModelManager para carregamento unificado.
+Coordena todos os modelos ONNX para processamento simultâneo
+de áudio e análise. Integra com ModelManager para carregamento unificado.
 """
 
 import logging
@@ -14,12 +13,14 @@ from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
 
 try:
     import onnxruntime as ort
+    ONNX_AVAILABLE = True
 except ImportError:
+    ONNX_AVAILABLE = False
     ort = None
 
 
-class NPUWorkerThread(QThread):
-    """Thread worker para processamento NPU."""
+class ONNXWorkerThread(QThread):
+    """Thread worker para processamento ONNX."""
     
     result_ready = pyqtSignal(str, dict)  # model_name, result
     
@@ -31,7 +32,7 @@ class NPUWorkerThread(QThread):
         self.session = None
     
     def run(self):
-        """Executar inferência na NPU."""
+        """Executar inferência ONNX."""
         try:
             # TODO: Implementar inferência real
             # Por enquanto, simular resultado
@@ -53,17 +54,17 @@ class NPUWorkerThread(QThread):
             self.result_ready.emit(self.model_name, result)
             
         except Exception as e:
-            logging.error(f"Erro no worker NPU {self.model_name}: {e}")
+            logging.error(f"Erro no worker ONNX {self.model_name}: {e}")
 
 
-class NPUManager(QObject):
-    """Gerenciador principal da NPU."""
+class ONNXManager(QObject):
+    """Gerenciador principal de modelos ONNX."""
     
     # Sinais
     transcription_ready = pyqtSignal(str, str)  # texto, speaker_id
     sentiment_updated = pyqtSignal(dict)        # métricas
     objection_detected = pyqtSignal(str, list) # objeção, sugestões
-    npu_status_changed = pyqtSignal(str)        # status
+    onnx_status_changed = pyqtSignal(str)        # status
     
     def __init__(self, config, model_manager=None):
         super().__init__()
@@ -71,7 +72,7 @@ class NPUManager(QObject):
         self.model_manager = model_manager
         self.logger = logging.getLogger(__name__)
         
-        # Estado da NPU
+        # Estado do ONNX
         self.is_initialized = False
         self.available_providers = []
         self.loaded_models = {}
@@ -82,13 +83,13 @@ class NPUManager(QObject):
         self.processing_timer.timeout.connect(self._simulate_processing)
     
     def initialize(self):
-        """Inicializar NPU e carregar modelos."""
+        """Inicializar ONNX e carregar modelos."""
         try:
-            self.logger.info("🧠 Inicializando NPU Manager...")
+            self.logger.info("Inicializando ONNX Manager...")
             
             # Verificar disponibilidade do ONNX Runtime
-            if not ort:
-                raise ImportError("ONNX Runtime não disponível")
+            if not ONNX_AVAILABLE:
+                raise ImportError("ONNX Runtime nao disponivel")
             
             # Verificar providers disponíveis
             self._check_available_providers()
@@ -97,28 +98,30 @@ class NPUManager(QObject):
             self._load_models()
             
             self.is_initialized = True
-            self.npu_status_changed.emit("connected")
-            self.logger.info("✅ NPU Manager inicializado")
+            self.onnx_status_changed.emit("connected")
+            self.logger.info("ONNX Manager inicializado")
             
         except Exception as e:
-            self.logger.error(f"❌ Erro ao inicializar NPU: {e}")
-            self.npu_status_changed.emit("error")
+            self.logger.error(f"Erro ao inicializar ONNX: {e}")
+            self.onnx_status_changed.emit("error")
             # Continuar em modo simulação
             self._enable_simulation_mode()
     
     def _check_available_providers(self):
         """Verificar providers ONNX disponíveis."""
         self.available_providers = ort.get_available_providers()
-        self.logger.info(f"Providers disponíveis: {self.available_providers}")
+        self.logger.info(f"Providers disponiveis: {self.available_providers}")
         
-        # Verificar se QNN Provider está disponível
-        if "QNNExecutionProvider" in self.available_providers:
-            self.logger.info("✅ QNN Execution Provider detectado (NPU)")
-        else:
-            self.logger.warning("⚠️ QNN Provider não encontrado, usando CPU/GPU")
+        # Verificar providers disponíveis
+        if "CPUExecutionProvider" in self.available_providers:
+            self.logger.info("CPU Execution Provider detectado")
+        if "CUDAExecutionProvider" in self.available_providers:
+            self.logger.info("CUDA Execution Provider detectado")
+        if "DmlExecutionProvider" in self.available_providers:
+            self.logger.info("DirectML Execution Provider detectado")
     
     def _load_models(self):
-        """Carregar modelos ONNX na NPU."""
+        """Carregar modelos ONNX."""
         if self.model_manager:
             # Usar ModelManager se disponível
             self.model_manager.load_manifest()
@@ -134,11 +137,11 @@ class NPUManager(QObject):
                             "session": session,
                             "status": "loaded"
                         }
-                        self.logger.info(f"✅ Modelo {model_name} carregado via ModelManager")
+                        self.logger.info(f"Modelo {model_name} carregado via ModelManager")
                     else:
-                        self.logger.warning(f"⚠️ Modelo {model_name} não pôde ser carregado")
+                        self.logger.warning(f"Modelo {model_name} nao pode ser carregado")
                 except Exception as e:
-                    self.logger.error(f"❌ Erro ao carregar {model_name}: {e}")
+                    self.logger.error(f"Erro ao carregar {model_name}: {e}")
         else:
             # Fallback para carregamento manual
             models_to_load = {
@@ -149,7 +152,7 @@ class NPUManager(QObject):
             }
             
             for model_name, filename in models_to_load.items():
-                model_path = self.config.get_model_path(filename)
+                model_path = self.config.models_dir / filename
                 
                 if model_path.exists():
                     try:
@@ -159,17 +162,17 @@ class NPUManager(QObject):
                             "path": model_path,
                             "status": "loaded"
                         }
-                        self.logger.info(f"✅ Modelo {model_name} carregado")
+                        self.logger.info(f"Modelo {model_name} carregado")
                     except Exception as e:
-                        self.logger.error(f"❌ Erro ao carregar {model_name}: {e}")
+                        self.logger.error(f"Erro ao carregar {model_name}: {e}")
                 else:
-                    self.logger.warning(f"⚠️ Modelo {filename} não encontrado")
+                    self.logger.warning(f"Modelo {filename} nao encontrado")
     
     def _enable_simulation_mode(self):
         """Habilitar modo de simulação."""
-        self.logger.info("🎭 Habilitando modo de simulação NPU")
+        self.logger.info("Habilitando modo de simulacao ONNX")
         self.is_initialized = True
-        self.npu_status_changed.emit("simulation")
+        self.onnx_status_changed.emit("simulation")
         
         # Simular modelos carregados
         self.loaded_models = {
@@ -180,7 +183,7 @@ class NPUManager(QObject):
         }
     
     def process_audio(self, audio_data: np.ndarray):
-        """Processar áudio através da pipeline NPU."""
+        """Processar áudio através da pipeline ONNX."""
         if not self.is_initialized:
             return
         
@@ -191,7 +194,7 @@ class NPUManager(QObject):
             self._process_objection_detection(audio_data)
             
         except Exception as e:
-            self.logger.error(f"Erro no processamento de áudio: {e}")
+            self.logger.error(f"Erro no processamento de audio: {e}")
     
     def _process_transcription(self, audio_data: np.ndarray):
         """Processar transcrição via Whisper."""
@@ -199,7 +202,7 @@ class NPUManager(QObject):
             return
         
         # Criar worker thread para Whisper
-        worker = NPUWorkerThread("whisper", "", audio_data)
+        worker = ONNXWorkerThread("whisper", "", audio_data)
         worker.result_ready.connect(self._handle_transcription_result)
         worker.start()
         
@@ -210,7 +213,7 @@ class NPUManager(QObject):
         if "sentiment" not in self.loaded_models:
             return
         
-        worker = NPUWorkerThread("sentiment", "", audio_data)
+        worker = ONNXWorkerThread("sentiment", "", audio_data)
         worker.result_ready.connect(self._handle_sentiment_result)
         worker.start()
         
@@ -251,7 +254,7 @@ class NPUManager(QObject):
                 # Simular sugestões
                 suggestions = [
                     {
-                        "text": f"Entendo sua preocupação sobre {keyword}. Vamos falar sobre o valor...",
+                        "text": f"Entendo sua preocupacao sobre {keyword}. Vamos falar sobre o valor...",
                         "confidence": 0.9,
                         "category": "Objeção de Preço"
                     },
@@ -291,8 +294,8 @@ class NPUManager(QObject):
         self.processing_timer.stop()
     
     def cleanup(self):
-        """Limpar recursos da NPU."""
-        self.logger.info("🔄 Limpando recursos NPU...")
+        """Limpar recursos do ONNX."""
+        self.logger.info("Limpando recursos ONNX...")
         
         # Parar workers ativos
         for worker in self.active_workers.values():
@@ -308,4 +311,8 @@ class NPUManager(QObject):
         if self.model_manager:
             self.model_manager.cleanup()
         
-        self.logger.info("✅ NPU Manager finalizado")
+        self.logger.info("ONNX Manager finalizado")
+
+
+# Alias para compatibilidade
+NPUManager = ONNXManager

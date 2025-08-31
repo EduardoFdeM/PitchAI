@@ -19,40 +19,31 @@ from ...core.contracts import EventType, create_error
 
 
 class VisionAnalyzer:
-    """RF-3.3: Motor de visão (opcional) usando AnythingLLM"""
+    """Analisador de expressões faciais."""
     
-    def __init__(self, config: SentimentConfig = None, anythingllm_client=None, opt_in: bool = False):
+    analysis_ready = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+    
+    def __init__(self, config: SentimentConfig = None, opt_in: bool = False):
+        super().__init__()
         self.config = config or SentimentConfig()
-        self.anythingllm_client = anythingllm_client
+        self.is_enabled_flag = opt_in
         self.logger = logging.getLogger(__name__)
         
-        # Configuração de privacidade
-        self.enabled = opt_in and self.config.enable_vision
+        # TODO: Adicionar inicialização de modelos de visão ONNX
+        self.face_detector = None
+        self.expression_classifier = None
         
-        # Configurações de processamento
-        self.frame_width = 640
-        self.frame_height = 480
-        self.face_confidence_threshold = 0.7
-        
-        # Verificar disponibilidade do AnythingLLM se habilitado
-        if self.enabled:
-            self._check_anythingllm()
-    
-    def _check_anythingllm(self):
-        """Verificar se o AnythingLLM está disponível."""
-        if self.anythingllm_client:
-            try:
-                # Testar conexão
-                self.anythingllm_client._test_connection()
-                self.logger.info("✅ AnythingLLM disponível para análise visual")
-            except Exception as e:
-                self.logger.warning(f"⚠️ AnythingLLM não disponível: {e}")
-        else:
-            self.logger.warning("⚠️ Cliente AnythingLLM não fornecido")
-    
+        self.frame_count = 0
+        self.last_analysis_time = 0
+
+    def is_enabled(self) -> bool:
+        """Verifica se a análise de vídeo está habilitada."""
+        return self.is_enabled_flag
+
     def classify_expressions(self, faces: List[Face]) -> List[Expression]:
         """Classificar expressões faciais usando AnythingLLM."""
-        if not self.enabled or not faces:
+        if not self.is_enabled_flag or not faces:
             return []
         
         try:
@@ -184,7 +175,7 @@ class VisionAnalyzer:
     
     def analyze_frame(self, frame: np.ndarray, ts_ms: int) -> Dict[str, Any]:
         """Análise completa de um frame."""
-        if not self.enabled:
+        if not self.is_enabled_flag:
             return {
                 "enabled": False,
                 "faces_detected": 0,
@@ -308,7 +299,7 @@ class VisionAnalyzer:
     def get_visual_metrics(self) -> Dict[str, Any]:
         """Obter métricas de análise visual."""
         return {
-            "enabled": self.enabled,
+            "enabled": self.is_enabled_flag,
             "opt_in": self.config.enable_vision,
             "models_loaded": {
                 "face_detector": self.face_detector is not None,
@@ -320,29 +311,24 @@ class VisionAnalyzer:
     
     def cleanup(self):
         """Limpar recursos de visão."""
-        self.enabled = False
+        self.is_enabled_flag = False
         self.config.enable_vision = False
         self.logger.info("Recursos de análise visual limpos") 
-    
-    def is_enabled(self) -> bool:
-        """Verificar se a análise visual está habilitada."""
-        return self.enabled
     
     def enable_analysis(self, opt_in: bool = True):
         """Habilitar análise visual (opt-in)."""
         if opt_in:
-            self.enabled = True
+            self.is_enabled_flag = True
             self.config.enable_vision = True
-            self._check_anythingllm()
             self.logger.info("✅ Análise visual habilitada (opt-in)")
         else:
-            self.enabled = False
+            self.is_enabled_flag = False
             self.config.enable_vision = False
             self.logger.info("❌ Análise visual desabilitada")
     
     def detect_faces(self, frame: np.ndarray) -> List[Face]:
         """Detectar faces na imagem."""
-        if not self.enabled:
+        if not self.is_enabled_flag:
             return []
         
         try:

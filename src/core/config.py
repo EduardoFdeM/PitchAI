@@ -35,15 +35,9 @@ class Config:
     # ===== AUDIO =====
     audio: AudioConfig
     
-    # ===== NPU & AI =====
-    onnx_providers: list = None  # ['QNNExecutionProvider', 'CPUExecutionProvider']
+    # ===== AI =====
+    onnx_providers: list = None  # ['CPUExecutionProvider']
     model_cache_dir: Optional[Path] = None
-    
-    # ===== ANYTHINGLLM =====
-    anythingllm_url: str = "http://127.0.0.1:3001"
-    anythingllm_api_key: str = "local-dev"
-    anythingllm_timeout: float = 2.0
-    anythingllm_model: str = "llama3:instruct"
     
     # ===== SENTIMENT =====
     sentiment_update_interval_ms: int = 500
@@ -57,7 +51,7 @@ class Config:
     def __post_init__(self):
         """Configurações pós-inicialização."""
         if self.onnx_providers is None:
-            self.onnx_providers = ['QNNExecutionProvider', 'CPUExecutionProvider']
+            self.onnx_providers = ['CPUExecutionProvider']
         
         if self.model_cache_dir is None:
             self.model_cache_dir = self.cache_dir / "models"
@@ -66,6 +60,10 @@ class Config:
         for directory in [self.data_dir, self.models_dir, self.logs_dir, 
                          self.cache_dir, self.model_cache_dir]:
             directory.mkdir(parents=True, exist_ok=True)
+    
+    def get_model_path(self, filename: str) -> Path:
+        """Obter caminho completo para um arquivo de modelo."""
+        return self.models_dir / filename
 
 
 def create_config(app_dir: Optional[Path] = None) -> Config:
@@ -89,14 +87,8 @@ def create_config(app_dir: Optional[Path] = None) -> Config:
             channels=1
         ),
         
-        # Configurações NPU
-        onnx_providers=['QNNExecutionProvider', 'CPUExecutionProvider'],
-        
-        # Configurações AnythingLLM
-        anythingllm_url=os.getenv('ANYTHINGLLM_URL', 'http://127.0.0.1:3001'),
-        anythingllm_api_key=os.getenv('ANYTHINGLLM_API_KEY', 'local-dev'),
-        anythingllm_timeout=float(os.getenv('ANYTHINGLLM_TIMEOUT', '2.0')),
-        anythingllm_model=os.getenv('ANYTHINGLLM_MODEL', 'llama3:instruct'),
+        # Configurações AI
+        onnx_providers=['CPUExecutionProvider'],
         
         # Configurações de sentimento
         sentiment_update_interval_ms=500,

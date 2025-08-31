@@ -1,25 +1,43 @@
+"""
+Post-Call Summary Service - Feature 5
+====================================
+
+Serviço unificado para geração de resumos executivos pós-chamada.
+Consolida dados de transcrição, sentimento, objeções e gera resumo via LLM local.
+"""
+
 import json
 import uuid
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from PyQt6.QtCore import QObject, pyqtSignal, QThread
 
 @dataclass
 class CallSummary:
     """Estrutura do resumo pós-chamada"""
+    call_id: str
     key_points: List[str]
     objections: List[Dict[str, Any]]
     next_steps: List[Dict[str, Any]]
     metrics: Dict[str, Any]
+    generated_at: float
 
-class PostCallSummaryService:
-    """Serviço para geração de resumo pós-chamada"""
-    
-    def __init__(self, llm_service, storage_service):
+class PostCallSummaryService(QObject):
+    """Serviço unificado para geração de resumo pós-chamada"""
+
+    summary_ready = pyqtSignal(CallSummary)
+    summary_error = pyqtSignal(str)
+
+    def __init__(self, config, llm_service=None, storage_service=None):
+        super().__init__()
+        self.config = config
+        self.logger = logging.getLogger(__name__)
         self.llm_service = llm_service
         self.storage_service = storage_service
-        
-    async def generate(self, call_id: str) -> CallSummary:
+
+    def generate(self, call_id: str) -> Optional[CallSummary]:
         """Gera resumo executivo da chamada"""
         # 1. Consolidar dados da chamada
         call_data = await self._consolidate_call_data(call_id)

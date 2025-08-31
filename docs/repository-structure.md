@@ -23,11 +23,10 @@ PitchAI/
 │   │
 │   ├── 📁 ai/                      # 🤖 Pipeline de IA na NPU
 │   │   ├── __init__.py
-│   │   ├── npu_manager.py          # Coordenador da NPU Snapdragon
-│   │   ├── whisper_transcription.py # Transcrição em tempo real
-│   │   ├── sentiment_analysis.py   # Análise de sentimento
-│   │   ├── objection_detector.py   # Detecção de objeções
-│   │   └── models/                 # Modelos ONNX locais
+│   │   ├── npu_manager.py          # Coordenador da NPU
+│   │   ├── asr_whisper.py          # Transcrição em tempo real
+│   │   ├── llm_service.py          # Serviço de LLM para geração
+│   │   └── sentiment/              # Análise de sentimento
 │   │
 │   ├── 📁 audio/                   # 🎤 Processamento de áudio
 │   │   ├── __init__.py
@@ -92,11 +91,11 @@ PitchAI/
 
 ###  AI (`src/ai/`)
 **Responsabilidade**: Pipeline de IA na NPU
-- `npu_manager.py`: **CORE** - Coordena múltiplos modelos ONNX simultaneamente
-- `whisper_transcription.py`: Transcrição em tempo real com Whisper
-- `sentiment_analysis.py`: Análise multi-dimensional de sentimento
-- `objection_detector.py`: Detecção inteligente de objeções
-- 
+- `npu_manager.py`: **CORE** - Orquestra modelos ONNX na NPU
+- `asr_whisper.py`: Transcrição em tempo real com Whisper
+- `llm_service.py`: Serviço de geração de texto com Llama 3.2
+- `sentiment/`: Módulos para análise de sentimento multi-dimensional
+
 ###  Audio (`src/audio/`)
 **Responsabilidade**: Captura e processamento de áudio
 - `capture.py`: **CRÍTICO** - Captura WASAPI loopback do Windows

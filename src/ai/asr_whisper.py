@@ -164,18 +164,17 @@ class TranscriptionService(QObject):
         try:
             # Preferir ModelManager (manifesto + providers padronizados)
             if self.model_manager:
-                self.session = self.model_manager.get_session("whisper_base")
+                # Tentar carregar whisper_small primeiro, fallback para tiny
+                self.session = self.model_manager.get_session("whisper_small_encoder")
                 if not self.session:
-                    raise RuntimeError("Sessão whisper_base não carregada pelo ModelManager")
+                    self.logger.warning("⚠️ Whisper Small não disponível, tentando Tiny...")
+                    self.session = self.model_manager.get_session("whisper_tiny_encoder")
+                if not self.session:
+                    raise RuntimeError("Nenhum modelo Whisper disponível no ModelManager")
                 self.logger.info("✅ Modelo Whisper carregado via ModelManager")
             else:
                 # Fallback para carregamento manual
-                providers = []
-                try:
-                    providers.append(("QNNExecutionProvider", {}))
-                except Exception:
-                    pass
-                providers.append("CPUExecutionProvider")
+                providers = ["CPUExecutionProvider"]
                 
                 model_path = self.model_entry.get("path", "models/whisper_base.onnx")
                 self.session = ort.InferenceSession(model_path, providers=providers)
@@ -461,23 +460,28 @@ class TranscriptionService(QObject):
         rms = np.sqrt(np.mean(audio_window.astype(np.float32)**2))
 
         if rms > 1000:  # Áudio com sinal
-            # Exemplos realistas de fala em português brasileiro
+            # Exemplos focados em contexto de vendas em PT-BR
             pt_br_examples = [
-                "Olá, bom dia!",
+                "Olá, bom dia! Como vai?",
                 "Gostaria de saber mais sobre o produto",
                 "Qual é o preço da solução?",
                 "Entendi, obrigado pela informação",
-                "Vamos marcar uma reunião para discutir isso",
-                "Preciso falar com o responsável",
-                "O orçamento está aprovado",
+                "Vamos marcar uma demonstração?",
+                "Preciso falar com o responsável técnico",
+                "O orçamento está aprovado para este trimestre",
                 "Quando podemos começar o projeto?",
-                "Está dentro do nosso orçamento",
-                "Vamos analisar as opções disponíveis"
+                "Isso está dentro do nosso orçamento",
+                "Vamos analisar as opções disponíveis",
+                "Qual é o prazo de implementação?",
+                "Vocês têm suporte técnico?",
+                "Como funciona o processo de contratação?",
+                "Quais são os benefícios principais?",
+                "Posso falar com alguém da diretoria?"
             ]
 
             import random
             text = random.choice(pt_br_examples)
-            confidence = 0.8
+            confidence = 0.85  # Aumentado para contexto de vendas
         else:  # Silêncio
             text = ""
             confidence = 0.0

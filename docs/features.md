@@ -686,7 +686,7 @@ E o painel continua exibindo sentimento e engajamento
 
 ---
 
-## 13) Observabilidade
+## 13) Observabilidade (local)
 
 * **Métricas**: latência por janela, % uso NPU, taxa de eventos/min, confiança média.
 * **Logs** (sem conteúdo): início/parada, erro de modelo, fallback, “alert fired”.
@@ -717,15 +717,15 @@ E o painel continua exibindo sentimento e engajamento
 
 ## 1) Propósito e Escopo
 
-**Objetivo.** Detectar **objeções em tempo real** na fala do cliente e **sugerir respostas** (scriptos, evidências, ROI, cases) buscando em uma **base de conhecimento local** (manuais, política de preços, scripts, CRM local), operando **100% on-device** e com **baixa latência**. &#x20;
-**Escopo.** Módulo *assistente de conhecimento* que consome a transcrição (Feature 2), dispara *retrieval* e *reranking*, e orquestra um LLM quantizado (ex.: **Llama 3.1 8B via AnythingLLM**) na **NPU** para gerar **sugestões contextualizadas** ao vendedor.&#x20;
+**Objetivo.** Detectar **objeções em tempo real** na fala do cliente e **sugerir respostas** (scriptos, evidências, ROI, cases) buscando em uma **base de conhecimento local** (manuais, política de preços, scripts, CRM local), operando **100% on-device** e com **baixa latência**. 
+**Escopo.** Módulo *assistente de conhecimento* que consome a transcrição (Feature 2), dispara *retrieval* e *reranking*, e orquestra um LLM quantizado (ex.: **Llama 3.2 3B via LLM Service**) na **NPU** para gerar **sugestões contextualizadas** ao vendedor. 
 
 ## 2) Referências de Engenharia
 
 * **ISO/IEC/IEEE 29148** (SRS), **RFC 2119** (MUST/SHOULD/MAY).
 * **Clean Architecture/DDD** — domínio *ObjectionHandling* isolado de infra (indexador/LLM).
-* **ONNX Runtime / NPU** — execução local; **AnythingLLM** como *runner*.&#x20;
-* **LGPD** — processamento local, sem envio à nuvem.&#x20;
+* **ONNX Runtime / NPU** — execução local. 
+* **LGPD** — processamento local, sem envio à nuvem. 
 
 ## 3) Stakeholders e Atores
 
@@ -770,9 +770,9 @@ E o painel continua exibindo sentimento e engajamento
 
 **RF-4.4 Geração de sugestão (LLM on-device)**
 
-* **MUST** invocar LLM local (ex.: Llama 3.1 8B via AnythingLLM) com ***retrieval-augmented prompt*** e *guardrails* (estrita citação das fontes).&#x20;
+* **MUST** invocar LLM local (ex.: Llama 3.2 3B via LLM Service) com ***retrieval-augmented prompt*** e *guardrails* (estrita citação das fontes). 
 * **MUST** produzir 1–3 **respostas curtas**, ranqueadas por **score** e com **referências** (título/ID dos docs).
-* **MAY** sugerir **próximas perguntas** e **transições** de script (caminhos de conversa).&#x20;
+* **MAY** sugerir **próximas perguntas** e **transições** de script (caminhos de conversa). 
 
 **RF-4.5 UI & Alertas**
 
@@ -895,7 +895,7 @@ type SuggestionBundle = {
  -> Persistência (objection_event, rag_retrieval, rag_suggestion)
 ```
 
-(Detector é disparado pela transcrição; AnythingLLM/LLM local faz a síntese com docs recuperados.)&#x20;
+(Detector é disparado pela transcrição; LLM Service local faz a síntese com docs recuperados.) 
 
 **10.2 Fallback sem LLM**
 
@@ -978,16 +978,14 @@ E o histórico vincula objeção ↔ sugestão ↔ documentos
 ## 1) Propósito e Escopo
 
 **Objetivo.** Automatizar a **síntese executiva da reunião** imediatamente após a chamada, condensando informações em um **resumo estruturado** com: pontos principais, objeções tratadas, próximos passos, métricas de performance e sinais de compra.
-**Escopo.** Módulo que consome eventos da F2–F4 e alimenta: (a) **Resumo na UI** logo após encerrar, (b) **Persistência** no histórico (F6), (c) **Exportações** (PDF/MD), (d) **Treinamento interno** (flashcards/quizzes).&#x20;
-
----
+**Escopo.** Módulo que consome eventos da F2–F4 e alimenta: (a) **Resumo na UI** logo após encerrar, (b) **Persistência** no histórico (F6), (c) **Exportações** (PDF/MD), (d) **Treinamento interno** (flashcards/quizzes). 
 
 ## 2) Referências de Engenharia
 
 * **ISO/IEC/IEEE 29148** (SRS)
 * **RFC 2119** (MUST/SHOULD/MAY)
 * **Clean Architecture** — camada de síntese separada de captura e análise
-* **LLM Local (AnythingLLM/Llama 3.1)** — rodando na NPU, garante privacidade e baixa latência
+* **LLM Local (Llama 3.2 via LLM Service)** — rodando na NPU, garante privacidade e baixa latência
 * **LGPD** — armazenamento mínimo e direito de exclusão
 
 ---

@@ -37,7 +37,7 @@ class ObjectionCategory(Enum):
 
 class NPUProvider(Enum):
     """Provedores de NPU."""
-    QNN = "QNN"
+    ONNX = "ONNX"
     CPU = "CPU"
     DML = "DML"
 

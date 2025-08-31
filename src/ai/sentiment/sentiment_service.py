@@ -33,24 +33,18 @@ class SentimentService(QObject):
     dashboard_updated = pyqtSignal(object)  # DashboardData
     error_occurred = pyqtSignal(str)
     
-    def __init__(self, config: SentimentConfig = None, model_manager=None, anythingllm_client=None):
+    def __init__(self, config: SentimentConfig = None, model_manager=None):
         super().__init__()
         self.config = config or SentimentConfig()
         self.model_manager = model_manager
-        self.anythingllm_client = anythingllm_client
         self.logger = logging.getLogger(__name__)
         
         # Componentes de análise
         self.text_analyzer = TextAnalyzer(self.config, model_manager)
         self.prosody_analyzer = ProsodyAnalyzer(self.config, model_manager)
-        self.vision_analyzer = VisionAnalyzer(self.config, anythingllm_client, opt_in=False)
+        self.vision_analyzer = VisionAnalyzer(self.config, opt_in=False)
         self.fusion_engine = FusionEngine(self.config)
         self.keyword_detector = KeywordDetector(self.config)
-        
-        # Passar cliente AnythingLLM para os analisadores
-        if self.anythingllm_client:
-            self.text_analyzer.anythingllm_client = self.anythingllm_client
-            self.prosody_analyzer.anythingllm_client = self.anythingllm_client
         
         # Estado do serviço
         self.is_running = False

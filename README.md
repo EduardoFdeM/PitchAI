@@ -81,7 +81,7 @@ flowchart LR
 ###  **Feature 4: RAG para Quebra de Objeções**
 * **Detecção**: Classificação em {Preço, Timing, Autoridade, Necessidade}
 * **Base de Conhecimento**: SQLite + embeddings (FAISS)
-* **Modelo**: Llama 3.1 8B quantizado (AnythingLLM, NPU)
+* **Modelo**: Llama 3.2 3B quantizado (LLM Service local, NPU)
 * **Pipeline**:
 
   1. Detecta objeção via transcrição
@@ -150,7 +150,7 @@ flowchart LR
 | **Frontend**   | PyQt6 + Glassmorphism              | UI nativa, responsiva            |
 | **Database**   | SQLite + FTS5 + criptografia       | Leve, embarcado, busca eficiente |
 | **Audio**      | PyAudio + WASAPI loopback          | Captura transparente             |
-| **RAG Engine** | FAISS + AnythingLLM (Llama 3.1 8B) | Busca vetorial + geração local   |
+| **RAG Engine** | FAISS + LLM Service (Llama 3.2 3B) | Busca vetorial + geração local   |
 | **Summarizer** | BART-large ONNX (quantizado)       | Síntese de alto nível            |
 
 ---

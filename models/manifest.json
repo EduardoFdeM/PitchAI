@@ -1,52 +1,62 @@
 {
+  "whisper_large_encoder": {
+    "path": "models/whisper_large/encoder_model.onnx",
+    "ep": ["CPU"],
+    "input": "audio_16k_mono",
+    "quant": "native",
+    "description": "Encoder para o modelo Whisper Large ONNX padrão.",
+    "version": "1.0",
+    "size_mb": 1500,
+    "latency_target_ms": 400
+  },
+  "whisper_large_decoder": {
+    "path": "models/whisper_large/decoder_model.onnx",
+    "ep": ["CPU"],
+    "input": "tokens",
+    "quant": "native",
+    "description": "Decoder para o modelo Whisper Large ONNX padrão.",
+    "version": "1.0",
+    "size_mb": 1500,
+    "latency_target_ms": 400
+  },
+  "whisper_small_encoder": {
+    "path": "models/whisper_small/whisper_small-hfwhisperencoder-qualcomm_snapdragon_x_elite.bin",
+    "ep": ["CPU"],
+    "input": "audio_16k_mono",
+    "quant": "native",
+    "description": "Encoder Whisper Small para CPU.",
+    "version": "1.0",
+    "size_mb": 244,
+    "latency_target_ms": 200
+  },
+  "whisper_small_decoder": {
+    "path": "models/whisper_small/whisper_small-hfwhisperdecoder-qualcomm_snapdragon_x_elite.bin",
+    "ep": ["CPU"],
+    "input": "tokens",
+    "quant": "native",
+    "description": "Decoder Whisper Small para CPU.",
+    "version": "1.0",
+    "size_mb": 244,
+    "latency_target_ms": 200
+  },
   "whisper_tiny_encoder": {
     "path": "models/whisper_tiny/whisper_tiny-hfwhisperencoder-qualcomm_snapdragon_x_elite.bin",
-    "ep": ["QNN", "CPU"],
-    "input": "audio_features",
-    "quant": "int8_fp16",
-    "description": "Whisper Tiny Encoder para transcrição em tempo real (NPU)",
-    "version": "1.0.0",
-    "size_mb": 30,
+    "ep": ["CPU"],
+    "input": "audio_16k_mono",
+    "quant": "native",
+    "description": "Encoder Whisper Tiny para CPU.",
+    "version": "1.0",
+    "size_mb": 39,
     "latency_target_ms": 100
   },
   "whisper_tiny_decoder": {
     "path": "models/whisper_tiny/whisper_tiny-hfwhisperdecoder-qualcomm_snapdragon_x_elite.bin",
-    "ep": ["QNN", "CPU"],
-    "input": "encoder_hidden_states",
-    "quant": "int8_fp16",
-    "description": "Whisper Tiny Decoder para transcrição em tempo real (NPU)",
-    "version": "1.0.0",
-    "size_mb": 45,
+    "ep": ["CPU"],
+    "input": "tokens",
+    "quant": "native",
+    "description": "Decoder Whisper Tiny para CPU.",
+    "version": "1.0",
+    "size_mb": 39,
     "latency_target_ms": 100
-  },
-  "distilbert_sentiment": {
-    "path": "models/distilbert_sentiment.onnx",
-    "ep": ["QNN", "CPU"],
-    "input": "text_tokens",
-    "quant": "int8_fp16",
-    "description": "DistilBERT para análise de sentimento",
-    "version": "1.0.0",
-    "size_mb": 65,
-    "latency_target_ms": 30
-  },
-  "bert_objection": {
-    "path": "models/bert_objection.onnx",
-    "ep": ["QNN", "CPU"],
-    "input": "text_tokens",
-    "quant": "int8_fp16",
-    "description": "BERT para detecção de objeções",
-    "version": "1.0.0",
-    "size_mb": 110,
-    "latency_target_ms": 40
-  },
-  "ecapa_speaker": {
-    "path": "models/ecapa_speaker.onnx",
-    "ep": ["QNN", "CPU"],
-    "input": "audio_16k_mono",
-    "quant": "int8_fp16",
-    "description": "ECAPA-TDNN para separação de falantes",
-    "version": "1.0.0",
-    "size_mb": 85,
-    "latency_target_ms": 25
   }
-} 
+}

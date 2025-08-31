@@ -19,9 +19,18 @@ class WhisperDecoder:
         self.config = config
         self.is_real_decoder = True
 
-        # Configurações específicas para PT-BR
+        # Configurações específicas para PT-BR focado em vendas
         self.language = "pt"
         self.task = "transcribe"
+
+        # Vocabulário específico para vendas em português brasileiro
+        self.sales_vocabulary = {
+            "preço", "custo", "valor", "orçamento", "investimento",
+            "contrato", "acordo", "proposta", "negociação", "desconto",
+            "prazo", "entrega", "implementação", "suporte", "demonstração",
+            "cliente", "fornecedor", "produto", "solução", "serviço",
+            "empresa", "projeto", "benefício", "vantagem", "qualidade"
+        }
 
         # Tokens especiais (baseado no tokenizer do Whisper)
         self.special_tokens = {

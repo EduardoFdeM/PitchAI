@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from ai.sentiment import SentimentService, SentimentConfig
 from ai.sentiment.models import SentimentSample, SentimentEvent, DashboardData
 from audio.capture import AudioCapture
-from ai.whisper_transcription import WhisperTranscription
+from ai.asr_whisper import TranscriptionService
 
 
 def setup_logging():
@@ -52,7 +52,9 @@ def simulate_real_conversation():
     # Simular transcrição
     transcription_service = None
     try:
-        transcription_service = WhisperTranscription()
+        from core.config import Config
+        app_config = Config()
+        transcription_service = TranscriptionService(app_config)
         transcription_service.initialize()
         print("✅ Transcrição inicializada")
     except Exception as e:

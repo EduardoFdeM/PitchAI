@@ -29,8 +29,11 @@ class ProsodyAnalyzer:
         self.model_manager = model_manager
         self.logger = logging.getLogger(__name__)
         
-        # Modelo ONNX para classificação de prosódia
-        self.prosody_session = None
+        # Modelo ONNX para prosódia
+        self.prosody_model = None
+        
+        # Cache
+        self.cache = {}
         
         # Configurações de análise
         self.sample_rate = 16000
@@ -41,7 +44,7 @@ class ProsodyAnalyzer:
         self._initialize_model()
     
     def _initialize_model(self):
-        """Inicializar modelo de prosódia."""
+        """Inicializar modelo de análise de prosódia."""
         try:
             if not ONNX_AVAILABLE:
                 self.logger.warning("ONNX não disponível, usando simulação")
@@ -49,8 +52,8 @@ class ProsodyAnalyzer:
             
             # Tentar carregar via ModelManager
             if self.model_manager:
-                self.prosody_session = self.model_manager.get_session("prosody_classifier")
-                if self.prosody_session:
+                self.prosody_model = self.model_manager.get_session("prosody_classifier")
+                if self.prosody_model:
                     self.logger.info("✅ Modelo de prosódia carregado via ModelManager")
                     return
             
@@ -59,7 +62,7 @@ class ProsodyAnalyzer:
             providers = ["QNNExecutionProvider", "CPUExecutionProvider"]
             
             try:
-                self.prosody_session = ort.InferenceSession(model_path, providers=providers)
+                self.prosody_model = ort.InferenceSession(model_path, providers=providers)
                 self.logger.info(f"✅ Modelo de prosódia carregado: {model_path}")
             except Exception as e:
                 self.logger.warning(f"⚠️ Erro ao carregar modelo: {e}")
@@ -292,7 +295,7 @@ class ProsodyAnalyzer:
     def classify_valence(self, features: ProsodyFeatures) -> float:
         """Classificar valência (-1 a +1)."""
         try:
-            if self.prosody_session:
+            if self.prosody_model:
                 # Usar modelo ONNX
                 return self._classify_with_model(features)
             else:
@@ -306,9 +309,6 @@ class ProsodyAnalyzer:
     def _classify_with_model(self, features: ProsodyFeatures) -> float:
         """Classificação usando AnythingLLM."""
         try:
-            if not hasattr(self, 'anythingllm_client') or not self.anythingllm_client:
-                return self._simulate_valence(features)
-            
             # Preparar descrição das features
             features_desc = f"""
             Features de prosódia:
@@ -335,7 +335,7 @@ class ProsodyAnalyzer:
             
             # Configurar payload
             payload = {
-                "model": self.anythingllm_client.default_model,
+                "model": "prosody_classifier", # Assuming a default model name
                 "temperature": 0.1,
                 "stream": False,
                 "max_tokens": 10,
@@ -346,22 +346,11 @@ class ProsodyAnalyzer:
             }
             
             # Fazer requisição
-            response = self.anythingllm_client._make_request(payload, stream=False)
+            # This part would require an actual LLM client or a direct API call
+            # For now, we'll simulate a response based on features
+            self.logger.warning("Simulando classificação de valência com AnythingLLM (modelo ONNX)")
+            return self._simulate_valence(features)
             
-            if response.status_code != 200:
-                return self._simulate_valence(features)
-            
-            # Processar resposta
-            data = response.json()
-            content = data['choices'][0]['message']['content'].strip()
-            
-            # Parsear número
-            try:
-                score = float(content)
-                return np.clip(score, -1.0, 1.0)
-            except ValueError:
-                return self._simulate_valence(features)
-                
         except Exception as e:
             self.logger.error(f"Erro na análise de prosódia com AnythingLLM: {e}")
             return self._simulate_valence(features)
@@ -432,3 +421,8 @@ class ProsodyAnalyzer:
             "ts_end_ms": ts_end_ms,
             "audio_length": len(audio)
         } 
+
+    def clear_cache(self):
+        """Limpar cache de análise."""
+        self.cache.clear()
+        self.logger.info("Cache do ProsodyAnalyzer limpo") 
