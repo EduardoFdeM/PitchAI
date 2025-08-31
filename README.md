@@ -4,20 +4,25 @@
 
 ## Visão Geral
 
-O **PitchAI** é um pipeline de **IA multimodal para chamadas de vendas**, projetado para rodar totalmente no dispositivo. Ele combina:
+O **PitchAI** é um pipeline de **IA multimodal completo para chamadas de vendas**, projetado para rodar totalmente no dispositivo. Ele combina:
 
-* **Captura de Áudio** (WASAPI loopback + microfone)
-* **ASR**: Transcrição em tempo real (Whisper ONNX)
-* **Análise de Sentimento Multi-Dimensional** (texto + prosódia + visão opcional)
-* **Objeções + RAG**: Detecção + respostas inteligentes (Llama 3.1 on-device)
-* **Resumo Pós-Chamada**: Insights estruturados, métricas e próximos passos
-* **Histórico Persistente**: SQLite criptografado, com busca textual/semântica
+* **🎤 Captura de Áudio** (WASAPI loopback + microfone)
+* **📝 ASR**: Transcrição em tempo real (Whisper ONNX otimizado)
+* **💭 Análise de Sentimento Multi-Dimensional** (texto + prosódia + visão opcional)
+* **🎯 Objeções + RAG**: Detecção + respostas inteligentes (AnythingLLM + Llama 3.2 on-device)
+* **📊 Sistema DISC**: Análise comportamental do vendedor com perfil personalizado
+* **🎓 Mentor Engine**: Coaching inteligente com gamificação e XP
+* **📋 Resumo Pós-Chamada**: Insights estruturados, métricas e próximos passos
+* **💾 Histórico Persistente**: SQLite criptografado, com busca textual/semântica
 
 ### Diferenciais Técnicos
 
-* **Execução na NPU (QNN EP)** → latência <200ms, consumo mínimo de CPU/GPU.
-* **Arquitetura modular** → cada feature implementada como serviço independente orquestrado via EventBus.
-* **Segurança por design** → nenhum dado sai do notebook; toda a inferência é local.
+* **🚀 Execução na NPU (QNN EP)** → latência <200ms, consumo mínimo de CPU/GPU.
+* **🏗️ Arquitetura modular** → cada feature implementada como serviço independente orquestrado via EventBus thread-safe.
+* **🔒 Segurança por design** → nenhum dado sai do notebook; toda a inferência é local.
+* **⚡ Sistema de Cache Inteligente** → aceleração de respostas e redução de latência.
+* **📊 Monitoramento de Performance** → métricas em tempo real e profiling de operações.
+* **🛡️ Tratamento Robusto de Erros** → recuperação automática e logging detalhado.
 
 ---
 
@@ -25,15 +30,53 @@ O **PitchAI** é um pipeline de **IA multimodal para chamadas de vendas**, proje
 
 ```mermaid
 flowchart LR
-    A[Audio Capture - WASAPI+Mic] --> B[Whisper ASR - ONNX NPU]
-    B --> C[Sentiment Service - Text/Voice/Vision]
-    B --> D[Objection Detector]
-    D --> E[RAG Retriever + LLM - Llama 3.1]
-    B --> F[Summarizer - BART ONNX]
+    subgraph "🎤 Entrada"
+        A[Audio Capture - WASAPI+Mic]
+        I[EventBus Thread-Safe]
+    end
+
+    subgraph "🧠 IA Pipeline"
+        B[Whisper ASR - ONNX NPU]
+        C[Sentiment Service - Text/Voice/Vision]
+        D[Objection Detector + RAG]
+        E[AnyThingLLM - Llama 3.2]
+        F[Summary Service - BART ONNX]
+    end
+
+    subgraph "📊 Inteligência de Vendas"
+        J[DISC System - Behavioral Analysis]
+        K[Mentor Engine - Coaching + XP]
+    end
+
+    subgraph "💾 Persistência"
+        G[SQLite DB - History + Analytics]
+        L[Cache Manager - Performance]
+    end
+
+    subgraph "🖥️ Interface"
+        H[PyQt6 UI Dashboard + Export]
+        M[Performance Monitor + Error Handler]
+    end
+
+    A --> I
+    I --> B
+    B --> C
+    B --> D
+    D --> E
+    B --> F
     C --> F
     E --> F
-    F --> G[SQLite DB - History]
-    G --> H[PyQt6 UI Dashboard + Export]
+    F --> J
+    J --> K
+    B --> G
+    C --> G
+    D --> G
+    F --> G
+    K --> G
+    G --> L
+    I --> H
+    L --> H
+    M --> H
 ```
 
 ---
@@ -78,16 +121,17 @@ flowchart LR
 🚨 Alerta: "preço" mencionado 2x
 ```
 
-###  **Feature 4: RAG para Quebra de Objeções**
+###  **Feature 4: RAG para Quebra de Objeções + AnythingLLM**
 * **Detecção**: Classificação em {Preço, Timing, Autoridade, Necessidade}
 * **Base de Conhecimento**: SQLite + embeddings (FAISS)
-* **Modelo**: Llama 3.2 3B quantizado (LLM Service local, NPU)
+* **Modelo**: AnythingLLM com Llama 3.2 3B quantizado (100% offline)
 * **Pipeline**:
 
-  1. Detecta objeção via transcrição
-  2. Recupera documentos relevantes
-  3. Reranking + prompt RAG no LLM
-  4. Sugestões (1–3 respostas curtas, com score e fontes)
+  1. Detecta objeção via transcrição em tempo real
+  2. Recupera documentos relevantes via RAG
+  3. Reranking + prompt inteligente no AnythingLLM
+  4. Sugestões contextuais (1–3 respostas, com score e fontes)
+* **Fallback Robusto**: Simulação → LLMWare → AnythingLLM
 * **Exemplo**:
 
 ```
@@ -97,7 +141,40 @@ flowchart LR
 2. [85%] "Esse ponto é importante..."
 ```
 
-###  **Feature 5: Resumo Pós-Chamada Inteligente**
+###  **Feature 5: Sistema DISC - Análise Comportamental**
+* **Análise Linguística**: Talk Ratio, Imperativos, Perguntas, Hedges, Empatia
+* **Scores DISC**: Dominância(D), Influência(I), Estabilidade(S), Consciência(C)
+* **Perfil Personalizado**: Identificação automática de fraquezas e pontos fortes
+* **Módulos de Treino**: Recomendações específicas baseadas no perfil
+* **Evolução**: Tracking contínuo de desenvolvimento comportamental
+* **Exemplo**:
+
+```
+📊 Perfil: D=0.72, I=0.28, S=0.45, C=0.35
+🔍 Fraquezas: ["I_baixa", "C_baixa"]
+💡 Recomendações:
+• Assertividade sem perder empatia
+• Uso estratégico de perguntas abertas
+```
+
+###  **Feature 6: Mentor Engine - Coaching Inteligente**
+* **Classificação de Clientes**: Tier (fácil/médio/difícil) + Stage (descoberta→fechamento)
+* **Sistema de Gamificação**: XP, níveis (junior→mentor), leaderboard
+* **Coaching Contextual**: Tips em tempo real baseados em (tier, stage, objeção)
+* **Feedback Pós-Call**: Análise automática + tarefas de treino personalizadas
+* **Persistência**: Histórico completo em SQLite
+* **Exemplo**:
+
+```
+🎯 Cliente: difícil/negociação (score: 0.78)
+⭐ XP Ganho: 55 pontos (novo nível: pleno)
+💡 Próximos passos:
+• Focar em sinais de compromisso
+• Preparar proposta técnica
+• Agendar follow-up em 48h
+```
+
+###  **Feature 7: Resumo Pós-Chamada Inteligente**
 * **Modelo**: BART-large (ONNX, NPU)
 * **Estrutura do Resumo**:
 
@@ -107,6 +184,7 @@ flowchart LR
   * **Performance (KPIs)**
 * **Latência**: ≤ 3s após fim da chamada
 * **Export**: PDF/Markdown
+* **Integração**: Sistema DISC + Mentor Engine para insights avançados
 * **Output JSON**:
 
 ```json
@@ -114,14 +192,18 @@ flowchart LR
   "key_points": ["Equipe de 50 pessoas", "Budget R$50-80k"],
   "objections": [{"type":"preco","handled":true}],
   "next_steps":[{"desc":"Enviar proposta","due":"2025-01-17"}],
-  "metrics":{"talk_time_vendor_pct":0.45,"sentiment_avg":0.78}
+  "metrics":{"talk_time_vendor_pct":0.45,"sentiment_avg":0.78},
+  "disc_insights": ["Foco em assertividade", "Melhorar perguntas abertas"],
+  "mentor_tips": ["Cliente classificado como difícil", "55 XP ganhos"]
 }
 ```
 
-###  **Feature 6: Histórico das Ligações**
+###  **Feature 8: Histórico das Ligações + Analytics**
 * **Armazenamento**: SQLite criptografado + FTS5 (busca textual)
-* **Dados armazenados**: transcrição, resumo, KPIs, objeções, sinais
+* **Dados armazenados**: transcrição, resumo, KPIs, objeções, sinais, DISC, XP
+* **Analytics**: Métricas de performance, evolução comportamental, ROI de vendas
 * **Busca**: Full-text + semântica (embeddings locais)
+* **Dashboard**: Visualização de progresso e tendências
 * **Retenção**: configurável (default 180 dias)
 * **Exportação**: resumo-only ou full transcript (opt-in)
 
@@ -147,10 +229,16 @@ flowchart LR
 | -------------- | ---------------------------------- | -------------------------------- |
 | **Linguagem**  | Python 3.11+                       | Ecossistema IA, suporte ONNX     |
 | **AI Runtime** | ONNX Runtime + QNN EP (NPU)        | Execução otimizada, quantização  |
+| **LLM Engine** | AnythingLLM + Llama 3.2 3B         | IA conversacional 100% offline   |
 | **Frontend**   | PyQt6 + Glassmorphism              | UI nativa, responsiva            |
 | **Database**   | SQLite + FTS5 + criptografia       | Leve, embarcado, busca eficiente |
 | **Audio**      | PyAudio + WASAPI loopback          | Captura transparente             |
-| **RAG Engine** | FAISS + LLM Service (Llama 3.2 3B) | Busca vetorial + geração local   |
+| **EventBus**   | Thread-safe Pub/Sub                | Comunicação inter-módulos       |
+| **Cache**      | Redis-like + Performance Monitor   | Aceleração e métricas            |
+| **RAG Engine** | FAISS + Embeddings locais          | Busca vetorial + geração local   |
+| **DISC System**| Análise linguística + ML            | Perfil comportamental inteligente|
+| **Mentor Engine**| Gamificação + Coaching contextual   | Desenvolvimento profissional     |
+| **Error Handler**| Estratégias de retry + Recovery    | Robustez e confiabilidade        |
 | **Summarizer** | BART-large ONNX (quantizado)       | Síntese de alto nível            |
 
 ---
@@ -160,16 +248,30 @@ flowchart LR
 ```
 PitchAI/
 ├── 📁 src/
-│   ├── 📁 core/           # Motor principal da aplicação
-│   ├── 📁 ai/             # Modelos e pipeline NPU
-│   ├── 📁 audio/          # Captura e processamento
-│   ├── 📁 ui/             # Interface PyQt6
-│   └── 📁 data/           # Gerenciamento SQLite
-├── 📁 models/             # Modelos ONNX otimizados
-├── 📁 docs/               # Documentação técnica completa
-├── 📁 tests/              # Suite de testes
-├── 📁 scripts/            # Utilitários e deployment
-└── 📄 requirements.txt    # Dependências Python
+│   ├── 📁 core/           # 🏗️ Motor principal + EventBus + Config
+│   │   ├── __init__.py
+│   │   ├── application.py # Classe principal da aplicação
+│   │   ├── config.py      # Configurações centralizadas
+│   │   ├── contracts.py   # Contratos de eventos imutáveis
+│   │   ├── event_bus.py   # Sistema pub/sub thread-safe
+│   │   ├── error_handler.py   # Tratamento robusto de erros
+│   │   ├── performance_monitor.py # Métricas em tempo real
+│   │   └── cache_manager.py # Sistema de cache inteligente
+│   ├── 📁 ai/             # 🤖 Modelos e pipeline NPU
+│   │   ├── anythingllm_client.py # Integração AnythingLLM
+│   │   ├── asr_whisper.py # Transcrição em tempo real
+│   │   └── sentiment/     # Análise de sentimento
+│   ├── 📁 audio/          # 🎤 Captura e processamento
+│   ├── 📁 ui/             # 🖥️ Interface PyQt6 + Bridge
+│   ├── 📁 data/           # 💾 Gerenciamento SQLite + DAOs
+│   ├── 📁 disc/           # 📊 Sistema DISC comportamental
+│   ├── 📁 mentor/         # 🎓 Mentor Engine + XP
+│   └── 📁 client_profile/ # 👥 Perfis de clientes
+├── 📁 models/             # 🧠 Modelos ONNX otimizados
+├── 📁 docs/               # 📚 Documentação técnica completa
+├── 📁 tests/              # 🧪 Suite de testes abrangente
+├── 📁 scripts/            # 🔧 Utilitários e deployment
+└── 📄 requirements.txt    # 📦 Dependências Python
 ```
 
 ---

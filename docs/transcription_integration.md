@@ -1,28 +1,72 @@
 # Integração Frontend + Backend - Transcrição e Resumos
 
+## ✅ **Status: IMPLEMENTADO E INTEGRADO**
+
+A integração completa entre frontend PyQt6 e backend foi implementada com sucesso, incluindo transcrição em tempo real, geração de resumos inteligentes e integração com sistemas avançados (DISC + Mentor Engine).
+
 ## 🎯 Visão Geral
 
-Este documento descreve a integração completa entre frontend PyQt6 e backend para transcrição em tempo real e geração de resumos pós-reunião.
+Este documento descreve a integração completa entre frontend PyQt6 e backend para:
+
+- ✅ **Transcrição em Tempo Real**: Whisper ONNX otimizado com EventBus
+- ✅ **Geração de Resumos**: Integração com AnythingLLM + DISC + Mentor
+- ✅ **Sistema de Contratos**: Payloads padronizados e imutáveis
+- ✅ **EventBus Thread-Safe**: Comunicação robusta entre módulos
+- ✅ **UI Integrada**: Dados reais substituindo simulações
 
 ## 🏗️ Arquitetura da Integração
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MainWindow    │────│ IntegrationCtrl  │────│  DatabaseMgr    │
-│   (PyQt6)       │    │  (Qt Signals)    │    │   (SQLite)      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│TranscriptionWgt │────│TranscriptionSvc  │────│   LLM Service   │
-│   (UI)          │    │  (Whisper)       │    │   (Llama 3.2)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                                         │
-                                                         ▼
-                                               ┌─────────────────┐
-                                               │ Summary Service │
-                                               │   (Post-call)   │
-                                               └─────────────────┘
+```mermaid
+graph TD
+    subgraph "🖥️ Frontend PyQt6"
+        A[MainWindow] --> B[TranscriptionWidget]
+        B --> C[UiBridge + Qt Signals]
+        A --> D[Dashboard Widget]
+        A --> E[History Widget]
+    end
+
+    subgraph "🔄 EventBus Thread-Safe"
+        C --> F[EventBus Core]
+        F --> G[Contracts System]
+        F --> H[Debouncing Manager]
+    end
+
+    subgraph "🎯 Backend Services"
+        I[Audio Capture] --> J[Whisper ASR ONNX]
+        J --> K[Sentiment Service]
+        J --> L[Objection Detector]
+        L --> M[RAG Engine]
+        M --> N[AnyThingLLM Client]
+    end
+
+    subgraph "📊 Advanced Systems"
+        N --> O[Mentor Engine]
+        N --> P[DISC System]
+        O --> Q[Client Profile]
+        P --> R[Behavioral Analysis]
+    end
+
+    subgraph "💾 Persistence"
+        J --> S[Database Manager]
+        K --> S
+        L --> S
+        O --> S
+        P --> S
+        S --> T[SQLite + FTS5]
+    end
+
+    subgraph "📋 Summary Generation"
+        U[Summary Service] --> N
+        U --> O
+        U --> P
+        U --> V[BART ONNX]
+    end
+
+    F --> I
+    F --> U
+    T --> D
+    T --> E
+    U --> F
 ```
 
 ## 🔧 Componentes Principais
@@ -154,7 +198,7 @@ def on_error(error_msg):
 
 ## 📊 Funcionalidades de Resumo
 
-### Estrutura do Resumo
+### Estrutura do Resumo Inteligente
 
 ```json
 {
@@ -168,14 +212,16 @@ def on_error(error_msg):
     {
       "type": "preco",
       "handled": true,
-      "note": "ROI de 18 meses explicado"
+      "note": "ROI de 18 meses explicado",
+      "anythingllm_suggestions": ["Focar em valor long-term", "Comparar com concorrentes"]
     }
   ],
   "next_steps": [
     {
       "desc": "Enviar proposta técnica",
       "due": "2025-01-20",
-      "owner": "vendedor"
+      "owner": "vendedor",
+      "priority": "alta"
     }
   ],
   "metrics": {
@@ -185,7 +231,42 @@ def on_error(error_msg):
     "buying_signals": 3,
     "objections_total": 2,
     "objections_resolved": 2
-  }
+  },
+  "client_profile": {
+    "tier": "dificil",
+    "stage": "negociacao",
+    "complexity_score": 0.78,
+    "last_contact": "2025-01-15T10:30:00Z"
+  },
+  "disc_analysis": {
+    "vendor_profile": {
+      "D": 0.72, "I": 0.28, "S": 0.45, "C": 0.35,
+      "strengths": ["Dominancia"],
+      "gaps": ["Influencia", "Consciencia"],
+      "confidence": 0.85
+    },
+    "insights": [
+      "Focar em assertividade sem perder empatia",
+      "Melhorar uso de perguntas abertas",
+      "Desenvolver habilidades de organização"
+    ]
+  },
+  "mentor_feedback": {
+    "xp_gained": 55,
+    "level_progress": 0.55,
+    "coaching_tips": [
+      "Cliente classificado como difícil - manter estratégia de longo prazo",
+      "Focar em sinais de compromisso",
+      "Preparar proposta técnica detalhada"
+    ],
+    "training_tasks": [
+      "Praticar técnicas de fechamento",
+      "Estudar perfil comportamental DISC",
+      "Revisar estratégias para clientes difíceis"
+    ]
+  },
+  "generated_at": "2025-01-16T14:30:00Z",
+  "processing_time_ms": 2850
 }
 ```
 
