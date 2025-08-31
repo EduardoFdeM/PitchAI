@@ -255,6 +255,20 @@ class PitchAIApp(QObject):
         self.audio_capture.initialize()
         self.logger.info("✅ Captura de áudio inicializada")
     
+    def _initialize_ai_services(self):
+        """Inicializar serviços de IA."""
+        self.summary_service = SummaryService(self.npu_manager, self.database)
+        self.logger.info("✅ Serviços de IA inicializados")
+    
+    def _initialize_call_manager(self):
+        """Inicializar gerenciador de chamadas."""
+        self.call_manager = CallManager(
+            self.database, 
+            self.npu_manager, 
+            self.summary_service
+        )
+        self.logger.info("✅ Gerenciador de chamadas inicializado")
+    
     def _initialize_ui(self):
         """Inicializar interface PyQt6."""
         self.main_window = MainWindow(self.config, self)
@@ -329,15 +343,35 @@ class PitchAIApp(QObject):
         """Iniciar gravação e análise."""
         if not self.is_recording:
             self.logger.info("🎤 Iniciando gravação...")
-            self.current_session_id = self.database.create_session()
-            self.audio_capture.start()
+            
+            # Iniciar nova chamada
+            self.current_session_id = self.call_manager.start_call()
+            
+            # Iniciar captura de áudio
+            if self.audio_capture:
+                self.audio_capture.start()
+            
             self.is_recording = True
+            
+            # Simular dados para desenvolvimento
+            if self.config.get('demo_mode', True):
+                self.call_manager.simulate_call_data()
     
     def stop_recording(self):
         """Parar gravação e gerar resumo."""
         if self.is_recording:
             self.logger.info("⏹️ Parando gravação...")
-            self.audio_capture.stop()
+            
+            # Parar captura de áudio
+            if self.audio_capture:
+                self.audio_capture.stop()
+            
+            # Finalizar chamada e gerar resumo automático
+            if self.call_manager and self.call_manager.is_call_active():
+                summary = self.call_manager.end_call()
+                if summary:
+                    self.logger.info(f"📋 Resumo gerado com {len(summary.key_points)} pontos principais")
+            
             self.is_recording = False
             
             # Gerar resumo da sessão
@@ -483,3 +517,14 @@ class PitchAIApp(QObject):
             self.database.close()
         
         self.logger.info("✅ PitchAI encerrado")
+
+        print("💾 Persistindo resumo no banco de dados...")
+        # self.database_manager.save_summary(call_id, summary)
+        print(f"📄 Resumo final:\n{summary}")
+
+    def _on_new_transcription(self, text, speaker):
+        """Callback para lidar com novos trechos de transcrição."""
+        self._call_transcript.append({"speaker": speaker, "text": text})
+        # ...lógica para enviar à UI...
+
+    # ...outros callbacks para objeções e métricas...

@@ -5,22 +5,22 @@
 
 # ============ CORE FRAMEWORK ============
 PyQt6>=6.6.0              # Interface nativa moderna
-# numpy>=1.24.0,<1.27.0     # Operações matemáticas otimizadas - Instalado manualmente
+numpy>=1.24.0,<1.27.0     # Operações matemáticas otimizadas
 
 # ============ NPU & AI INFERENCE ============
 # CRITICAL: ONNX Runtime with QNN Provider para Snapdragon X NPU
 # Para instalar corretamente:
 # pip install onnxruntime-qnn --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-qnn/pypi/simple/
 onnxruntime>=1.16.0        # Fallback - será substituído pelo QNN
-torch>=2.6.0               # Para modelos PyTorch → ONNX
-torchvision>=0.16.0        # Torch vision companion
+torch>=2.1.0,<2.3.0       # Para modelos PyTorch → ONNX
+torchvision>=0.16.0
 onnx>=1.15.0               # Formato de modelo padrão
 
 # ============ AUDIO PROCESSING ============
 pyaudio>=0.2.11            # Captura de áudio do sistema (WASAPI)
 soundfile>=0.12.1          # I/O de arquivos de áudio
 librosa>=0.10.1            # Processamento avançado de áudio
-# webrtcvad>=2.0.10          # Voice Activity Detection - Temporariamente desabilitado
+webrtcvad>=2.0.10          # Voice Activity Detection
 scipy>=1.11.0              # Processamento de sinais
 
 # ============ AI & ML MODELS ============
@@ -33,7 +33,6 @@ optimum>=1.16.0            # Otimizações ONNX
 # ============ DATA & STORAGE ============
 # sqlite3 é built-in no Python
 sqlalchemy>=2.0.0          # ORM opcional para SQLite
-aiosqlite>=0.19.0          # SQLite assíncrono
 pydantic>=2.5.0            # Validação de dados
 
 # ============ WINDOWS INTEGRATION ============
@@ -46,9 +45,10 @@ python-dotenv>=1.0.0       # Variáveis de ambiente
 click>=8.1.7               # CLI interface
 tqdm>=4.66.0               # Barras de progresso
 requests>=2.31.0           # HTTP requests
-sseclient-py>=1.7.2        # Server-Sent Events para streaming LLM
 pillow>=10.0.0             # Processamento de imagens (para glassmorphism)
 psutil>=5.9.0              # Monitoramento de sistema
+reportlab>=4.0.0           # Geração de PDF
+markdown>=3.5.0            # Conversão Markdown para HTML
 
 # ============ PERFORMANCE OPTIMIZATION ============
 numba>=0.58.0              # JIT compilation para NumPy
@@ -70,6 +70,3 @@ mkdocs-mermaid2-plugin>=1.1.0  # Diagramas
 # ============ LOGGING & MONITORING ============
 loguru>=0.7.0             # Logging avançado
 rich>=13.7.0              # Console output rico
-
-
-# numpy
