@@ -19,6 +19,15 @@ class EventType(Enum):
     SUMMARY_READY = "summary.ready"
     SYSTEM_STATUS = "system.status"
     ERROR = "error"
+    
+    # Mentor Engine events
+    CALL_STARTED = "call.started"
+    CALL_STOPPED = "call.stopped"
+    MENTOR_CLIENT_CONTEXT = "mentor.client_context"
+    MENTOR_UPDATE = "mentor.update"
+    MENTOR_COACHING = "mentor.coaching"
+    XP_AWARDED = "xp.awarded"
+    LEADERBOARD_UPDATED = "leaderboard.updated"
 
 
 class AudioSource(Enum):
@@ -212,6 +221,103 @@ class ErrorEvent:
         return result
 
 
+# ===== MENTOR ENGINE EVENTS =====
+
+@dataclass
+class MentorClientContextEvent:
+    """Evento de contexto do cliente para UI."""
+    client_id: str
+    name: str
+    tier: str
+    stage: str
+    last_contact_at: Optional[int]
+    topics: List[str]
+    hints: List[str]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "client_id": self.client_id,
+            "name": self.name,
+            "tier": self.tier,
+            "stage": self.stage,
+            "last_contact_at": self.last_contact_at,
+            "topics": self.topics,
+            "hints": self.hints
+        }
+
+
+@dataclass
+class MentorUpdateEvent:
+    """Evento de update do mentor em tempo real."""
+    call_id: str
+    client_id: str
+    window_ms: int
+    insight: str
+    tips: List[str]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "call_id": self.call_id,
+            "client_id": self.client_id,
+            "window_ms": self.window_ms,
+            "insight": self.insight,
+            "tips": self.tips
+        }
+
+
+@dataclass
+class MentorCoachingEvent:
+    """Evento de coaching pós-call."""
+    call_id: str
+    client_id: str
+    seller_id: str
+    complexity: str
+    feedback_short: List[str]
+    training_task: str
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "call_id": self.call_id,
+            "client_id": self.client_id,
+            "seller_id": self.seller_id,
+            "complexity": self.complexity,
+            "feedback_short": self.feedback_short,
+            "training_task": self.training_task
+        }
+
+
+@dataclass
+class XPAwardedEvent:
+    """Evento de XP ganho."""
+    seller_id: str
+    call_id: str
+    xp: int
+    new_total: int
+    level: str
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "seller_id": self.seller_id,
+            "call_id": self.call_id,
+            "xp": self.xp,
+            "new_total": self.new_total,
+            "level": self.level
+        }
+
+
+@dataclass
+class LeaderboardUpdatedEvent:
+    """Evento de atualização do leaderboard."""
+    top: List[Dict[str, Any]]
+    my_rank: int
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "top": self.top,
+            "my_rank": self.my_rank
+        }
+
+
 # Factory functions para criar eventos
 def create_asr_chunk(call_id: str, source: str, ts_start: int, ts_end: int, 
                     text: str, confidence: float) -> ASRChunkEvent:
@@ -269,4 +375,67 @@ def create_error(scope: str, code: str, message: str,
         code=code,
         message=message,
         details=details
+    )
+
+
+# ===== MENTOR ENGINE FACTORY FUNCTIONS =====
+
+def create_mentor_client_context(client_id: str, name: str, tier: str, stage: str,
+                               last_contact_at: Optional[int], topics: List[str],
+                               hints: List[str]) -> MentorClientContextEvent:
+    """Criar evento de contexto do cliente."""
+    return MentorClientContextEvent(
+        client_id=client_id,
+        name=name,
+        tier=tier,
+        stage=stage,
+        last_contact_at=last_contact_at,
+        topics=topics,
+        hints=hints
+    )
+
+
+def create_mentor_update(call_id: str, client_id: str, window_ms: int,
+                       insight: str, tips: List[str]) -> MentorUpdateEvent:
+    """Criar evento de update do mentor."""
+    return MentorUpdateEvent(
+        call_id=call_id,
+        client_id=client_id,
+        window_ms=window_ms,
+        insight=insight,
+        tips=tips
+    )
+
+
+def create_mentor_coaching(call_id: str, client_id: str, seller_id: str,
+                         complexity: str, feedback_short: List[str],
+                         training_task: str) -> MentorCoachingEvent:
+    """Criar evento de coaching."""
+    return MentorCoachingEvent(
+        call_id=call_id,
+        client_id=client_id,
+        seller_id=seller_id,
+        complexity=complexity,
+        feedback_short=feedback_short,
+        training_task=training_task
+    )
+
+
+def create_xp_awarded(seller_id: str, call_id: str, xp: int,
+                     new_total: int, level: str) -> XPAwardedEvent:
+    """Criar evento de XP ganho."""
+    return XPAwardedEvent(
+        seller_id=seller_id,
+        call_id=call_id,
+        xp=xp,
+        new_total=new_total,
+        level=level
+    )
+
+
+def create_leaderboard_updated(top: List[Dict[str, Any]], my_rank: int) -> LeaderboardUpdatedEvent:
+    """Criar evento de atualização do leaderboard."""
+    return LeaderboardUpdatedEvent(
+        top=top,
+        my_rank=my_rank
     ) 

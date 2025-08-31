@@ -17,9 +17,10 @@ from urllib.parse import urljoin
 
 try:
     import sseclient
+    SSE_AVAILABLE = True
 except ImportError:
-    sseclient = None
-    logging.warning("sseclient-py não instalado. Streaming não disponível.")
+    SSE_AVAILABLE = False
+    logging.warning("sseclient-py não instalado. Usando streaming nativo.")
 
 
 @dataclass
@@ -86,7 +87,7 @@ class AnythingLLMClient:
             self.logger.error(f"❌ Não foi possível conectar com AnythingLLM: {e}")
     
     def _make_request(self, payload: Dict[str, Any], stream: bool = True) -> requests.Response:
-        """Fazer requisição para AnythingLLM."""
+        """Fazer requisição para AnythingLLM com retry e timeout adaptativo."""
         headers = {
             "Content-Type": "application/json",
             "Accept": "text/event-stream" if stream else "application/json"
@@ -95,13 +96,50 @@ class AnythingLLMClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         
-        return requests.post(
-            self.chat_endpoint,
-            json=payload,
-            headers=headers,
-            timeout=self.timeout,
-            stream=stream
-        )
+        # Timeout adaptativo baseado no tipo de requisição
+        if "summary" in str(payload).lower():
+            timeout = min(self.timeout, 60.0)  # Resumos podem demorar mais
+        elif "coaching" in str(payload).lower():
+            timeout = min(self.timeout, 45.0)  # Coaching também pode demorar
+        else:
+            timeout = min(self.timeout, 20.0)  # Sugestões mais rápidas
+        
+        # Retry com backoff exponencial
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    self.chat_endpoint,
+                    json=payload,
+                    headers=headers,
+                    timeout=timeout,
+                    stream=stream
+                )
+                
+                if response.status_code == 200:
+                    return response
+                elif response.status_code == 429:  # Rate limit
+                    wait_time = 2 ** attempt
+                    self.logger.warning(f"Rate limit, aguardando {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    self.logger.error(f"Erro HTTP {response.status_code}: {response.text}")
+                    break
+                    
+            except requests.exceptions.Timeout:
+                self.logger.warning(f"Timeout na tentativa {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(2 ** attempt)
+            except requests.exceptions.ConnectionError:
+                self.logger.warning(f"Erro de conexão na tentativa {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(2 ** attempt)
+        
+        # Se chegou aqui, todas as tentativas falharam
+        raise requests.exceptions.RequestException("Todas as tentativas de requisição falharam")
     
     def _parse_sse_event(self, event_data: str) -> Optional[str]:
         """Parsear evento SSE para extrair conteúdo."""
@@ -118,6 +156,48 @@ class AnythingLLMClient:
         
         return ''
     
+    def _process_native_streaming(self, response: requests.Response, stream_callback: Optional[callable] = None) -> str:
+        """Processar streaming nativo sem dependência externa."""
+        try:
+            full_text = ""
+            
+            if response.headers.get('content-type', '').startswith('text/event-stream'):
+                # Processar Server-Sent Events manualmente
+                for line in response.iter_lines(decode_unicode=True):
+                    if line.startswith('data: '):
+                        data = line[6:]  # Remover 'data: ' prefix
+                        if data == '[DONE]':
+                            break
+                        
+                        try:
+                            event_data = json.loads(data)
+                            if 'choices' in event_data and len(event_data['choices']) > 0:
+                                delta = event_data['choices'][0].get('delta', {})
+                                content = delta.get('content', '')
+                                full_text += content
+                                if stream_callback:
+                                    stream_callback(content)
+                        except json.JSONDecodeError:
+                            continue
+            else:
+                # Fallback para resposta não-streaming
+                data = response.json()
+                full_text = data['choices'][0]['message']['content']
+                if stream_callback:
+                    stream_callback(full_text)
+            
+            return full_text
+            
+        except Exception as e:
+            self.logger.error(f"Erro no streaming nativo: {e}")
+            # Fallback para resposta simples
+            try:
+                data = response.json()
+                return data['choices'][0]['message']['content']
+            except:
+                return "Erro ao processar resposta do LLM."
+    
+    @cache_result(ttl=600, priority=7, key_prefix="llm_suggestions")
     def generate_objection_suggestions(
         self, 
         objection: str, 
@@ -179,7 +259,8 @@ class AnythingLLMClient:
             
             # Processar streaming
             full_text = ""
-            if sseclient:
+            if SSE_AVAILABLE and stream:
+                # Usar sseclient se disponível
                 client = sseclient.SSEClient(response)
                 for event in client.events():
                     content = self._parse_sse_event(event.data)
@@ -189,9 +270,8 @@ class AnythingLLMClient:
                     if stream_callback:
                         stream_callback(content)
             else:
-                # Fallback sem streaming
-                data = response.json()
-                full_text = data['choices'][0]['message']['content']
+                # Streaming nativo sem dependência externa
+                full_text = self._process_native_streaming(response, stream_callback)
             
             # Processar resposta
             suggestions = self._parse_suggestions(full_text, passages)
@@ -258,16 +338,40 @@ class AnythingLLMClient:
         return suggestions[:3]  # Máximo 3 sugestões
     
     def _create_fallback_response(self, passages: List[RAGPassage], start_time: float) -> RAGResponse:
-        """Criar resposta de fallback usando apenas os snippets."""
+        """Criar resposta de fallback inteligente baseada no contexto."""
         latency = (time.time() - start_time) * 1000
         
-        # Criar sugestões baseadas nos snippets
+        # Análise inteligente das passagens para gerar sugestões contextuais
         suggestions = []
+        
         for i, passage in enumerate(passages[:3]):
+            # Extrair palavras-chave e conceitos da passagem
+            keywords = self._extract_keywords(passage.snippet)
+            
+            # Gerar sugestão baseada no conteúdo
+            if "preço" in passage.snippet.lower() or "custo" in passage.snippet.lower():
+                suggestion_text = f"Foque no valor percebido: {passage.snippet[:80]}..."
+            elif "timing" in passage.snippet.lower() or "urgência" in passage.snippet.lower():
+                suggestion_text = f"Crie senso de urgência: {passage.snippet[:80]}..."
+            elif "autoridade" in passage.snippet.lower() or "decisão" in passage.snippet.lower():
+                suggestion_text = f"Identifique o tomador de decisão: {passage.snippet[:80]}..."
+            elif "necessidade" in passage.snippet.lower() or "problema" in passage.snippet.lower():
+                suggestion_text = f"Descubra necessidades não atendidas: {passage.snippet[:80]}..."
+            else:
+                suggestion_text = f"Estratégia relevante: {passage.snippet[:80]}..."
+            
             suggestions.append(Suggestion(
-                text=f"Trecho relevante: {passage.snippet[:100]}...",
-                score=0.7 - i * 0.1,
+                text=suggestion_text,
+                score=0.8 - i * 0.1,  # Score decrescente por relevância
                 sources=[{"id": passage.id, "title": passage.title}]
+            ))
+        
+        # Adicionar sugestão genérica se não houver passagens suficientes
+        if len(suggestions) < 2:
+            suggestions.append(Suggestion(
+                text="Mantenha a calma e faça perguntas abertas para entender melhor a preocupação do cliente.",
+                score=0.5,
+                sources=[]
             ))
         
         return RAGResponse(
@@ -275,11 +379,27 @@ class AnythingLLMClient:
             retrieved=passages,
             latency_ms=latency,
             model_info={
-                "provider": "AnythingLLM (fallback)",
-                "model": "snippets-only",
+                "provider": "AnythingLLM (fallback inteligente)",
+                "model": "context-aware",
                 "temperature": 0.0
             }
         )
+    
+    def _extract_keywords(self, text: str) -> List[str]:
+        """Extrair palavras-chave relevantes do texto."""
+        # Palavras-chave importantes para vendas
+        sales_keywords = [
+            "preço", "custo", "valor", "orçamento", "investimento",
+            "timing", "urgência", "prazo", "tempo", "agora",
+            "autoridade", "decisão", "chefe", "aprovador", "stakeholder",
+            "necessidade", "problema", "dor", "solução", "benefício",
+            "roi", "retorno", "economia", "eficiência", "produtividade"
+        ]
+        
+        text_lower = text.lower()
+        found_keywords = [kw for kw in sales_keywords if kw in text_lower]
+        
+        return found_keywords
     
     def generate_session_summary(
         self, 
@@ -375,7 +495,7 @@ class AnythingLLMClient:
     def health_check(self) -> bool:
         """Verificar se o AnythingLLM está disponível."""
         try:
-            response = requests.get(self.models_endpoint, timeout=2.0)
+            response = requests.get(self.models_endpoint, timeout=5.0)
             return response.status_code == 200
         except:
             return False 

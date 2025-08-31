@@ -101,20 +101,87 @@ class EventBus:
                 self.logger.error(f"Erro no processamento de evento: {e}")
     
     def _dispatch_event(self, event: Dict[str, Any]):
-        """Despachar evento para todos os subscribers."""
+        """Despachar evento para todos os subscribers com tratamento de erro robusto."""
         event_type = event["type"]
         payload = event["payload"]
         
         with self._lock:
             subscribers = self._subscribers[event_type].copy()
         
-        # Executar callbacks em threads separadas para evitar bloqueio
+        # Executar callbacks com tratamento de erro robusto
         for callback in subscribers:
             try:
-                # Executar callback diretamente (assumindo que é thread-safe)
-                callback(payload)
+                # Verificar se callback ainda é válido
+                if not callable(callback):
+                    self.logger.warning(f"Callback inválido removido: {callback}")
+                    self.unsubscribe(event_type, callback)
+                    continue
+                
+                # Executar callback com timeout e retry
+                self._execute_callback_safely(callback, payload, event_type)
+                
             except Exception as e:
-                self.logger.error(f"Erro no callback de {event_type}: {e}")
+                self.logger.error(f"Erro crítico no callback de {event_type}: {e}")
+                import traceback
+                self.logger.error(f"Traceback: {traceback.format_exc()}")
+    
+    def _execute_callback_safely(self, callback: Callable, payload: Dict[str, Any], 
+                                event_type: str, max_retries: int = 2):
+        """Executar callback com retry e timeout."""
+        import threading
+        import time
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Executar com timeout de 30 segundos
+                result = None
+                exception = None
+                
+                def target():
+                    nonlocal result, exception
+                    try:
+                        result = callback(payload)
+                    except Exception as e:
+                        exception = e
+                
+                thread = threading.Thread(target=target, daemon=True)
+                thread.start()
+                thread.join(timeout=30.0)
+                
+                if thread.is_alive():
+                    # Timeout - tentar interromper thread
+                    self.logger.warning(f"Timeout no callback {getattr(callback, '__name__', 'unknown')} "
+                                      f"para evento {event_type}")
+                    raise TimeoutError("Callback timeout")
+                
+                if exception:
+                    raise exception
+                
+                # Sucesso
+                if attempt > 0:
+                    self.logger.info(f"Callback {getattr(callback, '__name__', 'unknown')} "
+                                   f"executado com sucesso na tentativa {attempt + 1}")
+                break
+                
+            except (TimeoutError, Exception) as e:
+                if attempt < max_retries:
+                    wait_time = 2 ** attempt  # Backoff exponencial
+                    self.logger.warning(f"Tentativa {attempt + 1} falhou para {event_type}, "
+                                      f"aguardando {wait_time}s: {e}")
+                    time.sleep(wait_time)
+                else:
+                    # Última tentativa falhou
+                    self.logger.error(f"Callback {getattr(callback, '__name__', 'unknown')} "
+                                    f"falhou após {max_retries + 1} tentativas para {event_type}: {e}")
+                    
+                    # Remover callback problemático se for muito problemático
+                    if hasattr(callback, '_error_count'):
+                        callback._error_count += 1
+                        if callback._error_count > 5:
+                            self.logger.warning(f"Removendo callback problemático: {callback}")
+                            self.unsubscribe(event_type, callback)
+                    else:
+                        callback._error_count = 1
     
     def get_metrics(self) -> Dict[str, Any]:
         """Obter métricas do EventBus."""
